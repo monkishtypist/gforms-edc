@@ -211,39 +211,90 @@ class GFEdcAddOn extends GFAddOn {
 	 * Performing a custom action at form paging.
 	 *
 	 * @param array $form The form currently being processed.
+	 * @param array $source_page_number The page coming from.
+	 * @param array $current_page_number The page currently viewed.
 	 */
 	public function form_paging( $form, $source_page_number, $current_page_number ) {
-    // var_dump( $form );
+		/*foreach ($form['fields'] as $field) {
+			var_dump($field);
+		}
+  	var_dump($_POST);*/
 	}
 
 	/**
 	 * Performing a custom action at the end of the form submission process.
 	 *
-	 * @param array $entry The entry currently being processed.
 	 * @param array $form The form currently being processed.
 	 */
 	public function view_form( $form ) {
-		var_dump( $form );
+		// do something...
 	}
 
 	/**
 	 * Performing a custom action at the end of the form submission process.
 	 *
-	 * @param array $entry The entry currently being processed.
 	 * @param array $form The form currently being processed.
 	 */
 	public function pre_submission( $form ) {
 
-		// Evaluate the rules configured for the custom_logic setting.
-		$result = true; // $this->is_custom_logic_met( $form, $entry );
+		// This section is used to validate any reasons for rejection, and append the data to the form
+		$rejectionStatusId = $this->getFieldIDByLabel( $form, 'Status' );
+		$rejectionReasonId = $this->getFieldIDByLabel( $form, 'Rejection Reason' );
 
-		// var_dump( $form );
+		$rejectedStatus = false;
+		$rejectedArr = array();
+		$rejectedReason = null;
 
-		$statusId = $this->getFieldIDByLabel( $form, 'Status' );
+		foreach ($form['fields'] as $field) {
 
-		if ( $result ) {
-			$_POST['input_' . $statusId] = 'Approved';
+			$id = $field->id;
+
+			// Age comparison
+			if ($field->type == 'date') {
+				// reject if <19 or >31 yrs
+				if ( $field->dateType == 'datefield' ) {
+					$glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
+					$birth = implode( $glue, $_POST[ 'input_' . $id ] );
+
+					$from = new DateTime($birth);
+					$to   = new DateTime('today');
+					$age  = $from->diff($to)->y;
+
+					if ( $age < 19 || $age > 31 ) {
+						$rejectedArr[ 'Age' ] = $age;
+					}
+				}
+			}
+			elseif ( isset( $field->rejectVal ) ) {
+				$rValArr = explode( ',', $field->rejectVal );
+				if ( isset( $_POST[ 'input_' . $field->id ] ) && in_array( $_POST[ 'input_' . $field->id ], $rValArr ) ) {
+					$rejectedArr[ $field->label ] = $_POST[ 'input_' . $field->id ];
+				}
+			}
+
 		}
+
+
+		// Remove empty array values
+		$rejectedArr = array_filter( $rejectedArr );
+
+		// If still exist reasons for rejection
+		if ( ! empty( $rejectedArr ) ) {
+
+			// Update rejected status to TRUE
+			$rejectedStatus = true;
+
+			// And for each reason, append to final output string
+			foreach ($rejectedArr as $key => $value) {
+				$rejectedReason .= $key . ' ' . $value . '; ';
+			}
+		
+		}
+		
+		// Finally, set form values to reflect rejections
+		$_POST['input_' . $rejectionStatusId] = ( $rejectedStatus ? 'Rejected' : 'Approved' );
+		$_POST['input_' . $rejectionReasonId] = $rejectedReason;
+		
 	}
 
 	/**
@@ -288,12 +339,12 @@ class GFEdcAddOn extends GFAddOn {
 				}
 			}
 
-			var_dump( $arr );
+			// var_dump( $arr );
 		}
 	}
 
 
-		// # SIMPLE CONDITION EXAMPLE --------------------------------------------------------------------------------------
+	// # SIMPLE CONDITION EXAMPLE --------------------------------------------------------------------------------------
 
 	/**
 	 * Define the markup for the custom_logic_type type field.
@@ -432,7 +483,7 @@ class GFEdcAddOn extends GFAddOn {
 	    <ul>
 	      <li>
 	        <label for="field_reject_val" class="section_label">
-	          <?php esc_html_e( 'Reject If Value', 'gforms-edc' ); ?>
+	          <?php esc_html_e( '"Reject If" Value', 'gforms-edc' ); ?>
 	          <?php gform_tooltip( 'form_field_reject_val' ); ?>
 	        </label>
 	        <input id="field_reject_val" type="text" onchange="SetFieldProperty('rejectVal', this.value)" />
@@ -474,7 +525,7 @@ class GFEdcAddOn extends GFAddOn {
 	  $tooltips['form_field_reject_val'] = sprintf(
 	    '<h6>%s</h6>%s',
 	    __( 'Rejection Value', 'gforms-edc' ),
-	    __( 'Mark this applicant as rejected if this field contains this value.', 'gforms-edc' )
+	    __( 'Comma separated list. Mark as rejected if this field contains any one of these values.', 'gforms-edc' )
 	 );
 
 	 return $tooltips;
