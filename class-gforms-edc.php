@@ -250,21 +250,29 @@ class GFEdcAddOn extends GFAddOn {
 			$id = $field->id;
 
 			// Age comparison
-			if ($field->type == 'date') {
+			if ( $field->type == 'date' ) {
 				// reject if <19 or >31 yrs
 				if ( $field->dateType == 'datefield' ) {
 					$glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
 					$birth = implode( $glue, $_POST[ 'input_' . $id ] );
 
-					$from = new DateTime($birth);
-					$to   = new DateTime('today');
-					$age  = $from->diff($to)->y;
+					$from = new DateTime( $birth );
+					$to   = new DateTime( 'today' );
+					$age  = $from->diff( $to )->y;
 
 					if ( $age < 19 || $age > 31 ) {
 						$rejectedArr[ 'Age' ] = $age;
 					}
 				}
 			}
+			// BMI comparison
+			elseif ( $field->label == 'BMI' ) {
+				$bmi = ( isset( $_POST[ 'input_' . $field->id ] ) ? $_POST[ 'input_' . $field->id ] : false );
+				if ( $bmi < 18 || $bmi >= 27 ) {
+					$rejectedArr[ $field->label ] = $_POST[ 'input_' . $field->id ];
+				}
+			}
+			// all other standard fields
 			elseif ( isset( $field->rejectVal ) ) {
 				$rValArr = explode( ',', $field->rejectVal );
 				if ( isset( $_POST[ 'input_' . $field->id ] ) && in_array( $_POST[ 'input_' . $field->id ], $rValArr ) ) {
