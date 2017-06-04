@@ -281,7 +281,6 @@ class GFEdcAddOn extends GFAddOn {
         'update_entry_meta_callback' => array( $this, 'update_entry_meta_duplicate' ), 
         'is_default_column' => false
     );
-    var_dump($entry_meta);
     return $entry_meta;
 	}
 	public function update_entry_meta_duplicate( $key, $lead, $form ) {
@@ -346,7 +345,6 @@ class GFEdcAddOn extends GFAddOn {
 
       // Age comparison
       if ( $field->type == 'date' ) {
-      	var_dump($_POST);
         // reject if <19 or >31 yrs
         if ( $field->dateType == 'datefield' ) {
           $glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
@@ -427,13 +425,7 @@ class GFEdcAddOn extends GFAddOn {
     // Evaluate the rules configured for the custom_logic setting.
     $result = $this->is_custom_logic_met( $form, $entry );
 
-    // var_dump( $entry );
-    // var_dump( $form );
-
     if ( $result ) {
-      // Do something awesome because the rules were met.
-      // var_dump($entry);
-      // var_dump($form);
 
       $arr = array();
 
@@ -458,7 +450,6 @@ class GFEdcAddOn extends GFAddOn {
         }
       }
 
-      // var_dump( $arr );
     }
   }
 
