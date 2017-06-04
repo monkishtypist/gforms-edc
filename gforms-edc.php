@@ -45,10 +45,5 @@ class GF_EDC_AddOn_Bootstrap {
 }
 
 function gf_edc_addon() {
-    return GFSimpleAddOn::get_instance();
+    return GFEdcAddOn::get_instance();
 }
-
-
-
-// Custom Form Field setting for Rejection Value ------------------------------------------------------------------
-
