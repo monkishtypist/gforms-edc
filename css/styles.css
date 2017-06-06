@@ -1,1 +1,49 @@
 /* placeholder for css */
+
+/* General */
+.gform_wrapper .gform_heading,
+.gform_wrapper .partial_entry_warning {
+  display: none;
+}
+
+.gform_wrapper label.gfield_label {
+  font-size: 16px;
+}
+
+/* Select fields */
+.gform_wrapper.gf_browser_chrome select {
+  padding: 7px 0 7px 3px;
+}
+
+.gform_wrapper.gf_browser_gecko select {
+  padding: 4px 12px 4px 2px;
+}
+
+.gform_wrapper.gf_browser_unknown select {
+  padding: 6px 6px 7px 2px;
+}
+
+/* Radios, Checkboxes */
+.gform_wrapper .gfield_checkbox li label, 
+.gform_wrapper .gfield_radio li label {
+  font-size: 16px;
+  font-weight: 300;
+  white-space: nowrap;
+}
+
+
+/* Buttons */
+.gform_wrapper .gform_page_footer .button.gform_button, 
+.gform_wrapper .gform_page_footer .button.gform_next_button, 
+.gform_wrapper .gform_page_footer .button.gform_previous_button {
+  background-color: #4F156C;
+  border: 1px solid #4F156C;
+  color: #fff;
+  font-size: 16px;
+  padding: 1rem 2rem;
+}
+.gform_wrapper .gform_page_footer .button.gform_previous_button {
+  background-color: #fff;
+  border-color: #3C3C3C;
+  color: #3C3C3C;
+}

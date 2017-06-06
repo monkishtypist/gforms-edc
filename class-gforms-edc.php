@@ -38,21 +38,17 @@ class GFEdcAddOn extends GFAddOn {
   public function init() {
     parent::init();
     
-    add_filter( 'gform_submit_button', array( $this, 'form_submit_button' ), 10, 2 );
-    add_filter( 'gform_entry_meta', array( $this, 'custom_entry_meta' ), 10, 2);
+    add_filter( 'gform_submit_button', array( $this, 'filter_form_submit_button' ), 10, 2 );
+    add_filter( 'gform_entry_meta', array( $this, 'filter_entry_meta' ), 10, 2);
+		add_filter( 'gform_entry_info', array( $this, 'filter_entry_info' ), 10, 2 );
+    add_filter( 'gform_tooltips', array( $this, 'filter_tooltips' ), 10, 1 );
 
-    add_action( 'gform_post_paging', array( $this, 'form_paging' ), 10, 3 );
-    add_action( 'gform_pre_submission', array( $this, 'pre_submission' ), 10, 1 );
-    add_action( 'gform_after_submission', array( $this, 'after_submission' ), 10, 2 );
-
-    add_action( 'gform_field_advanced_settings', array( $this, 'render_reject_val_setting' ), 10, 1 );
-    add_action( 'gform_editor_js', array( $this, 'custom_field_setting_js' ), 10 );
-    add_filter( 'gform_tooltips', array( $this, 'reject_val_tooltip' ), 10, 1 );
-
+    add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
+    add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
+    add_action( 'gform_after_submission', array( $this, 'action_after_submission' ), 10, 2 );
+    add_action( 'gform_field_advanced_settings', array( $this, 'action_field_advanced_settings' ), 10, 1 );
+    add_action( 'gform_editor_js', array( $this, 'action_editor_js' ), 10 );
   }
-
-
-
 
   // # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
 
@@ -98,14 +94,13 @@ class GFEdcAddOn extends GFAddOn {
         'src'     => $this->get_base_url() . '/css/styles.css',
         'version' => $this->_version,
         'enqueue' => array(
-          array( 'field_types' => array( 'poll' ) )
+          array( 'field_types' => array( 'select', 'radio', 'checkbox' ) )
         )
       )
     );
 
     return array_merge( parent::styles(), $styles );
   }
-
 
   // # FRONTEND FUNCTIONS --------------------------------------------------------------------------------------------
 
@@ -117,7 +112,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @return string
    */
-  function form_submit_button( $button, $form ) {
+  function filter_form_submit_button( $button, $form ) {
     $settings = $this->get_form_settings( $form );
     if ( isset( $settings['enabled'] ) && true == $settings['enabled'] ) {
       $text   = $this->get_plugin_setting( 'mytextbox' );
@@ -126,7 +121,6 @@ class GFEdcAddOn extends GFAddOn {
 
     return $button;
   }
-
 
   // # ADMIN FUNCTIONS -----------------------------------------------------------------------------------------------
 
@@ -152,6 +146,13 @@ class GFEdcAddOn extends GFAddOn {
     
     echo '<h3>Form Settings</h3>';
     echo '<p>After creating your form, you must update the form settings to match your custom fields. On the form settings page you must associate height, weight, and BMI parameters to the appropriate fields.';
+
+    echo '<h2>Additional Requirements</h2>';
+    echo '<p>The following additional add-ons are required for complete functioanl requirements for EDC Application Form:</p>';
+    echo '<ol><li><b>Gravity Forms</b> with developer\'s license</li>';
+    echo '<li><b>Partial Entries Add-on</b> for storing each step of the form within GForms entries.</li>';
+    echo '<li><b>MailChimp Add-on</b> for adding applicants to various lead lists.</li>';
+    echo '<li><b>Gravity Perks</b> plugin with <i>GP PReview Submission</i> perk for displaying the submission preview page in the last step.</li>';
   }
 
   /**
@@ -265,7 +266,6 @@ class GFEdcAddOn extends GFAddOn {
     );
   }
 
-
   // # ACTION HOOKS --------------------------------------------------------------------------------------------------
 
   /**
@@ -274,18 +274,37 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $entry_meta Entry meta array.
    * @param array $form_id The ID of the form from which the entry value was submitted.
    */
-  public function custom_entry_meta( $entry_meta, $form_id ) {
+  public function filter_entry_meta( $entry_meta, $form_id ) {
     $entry_meta[ 'is_duplicate' ] = array(
         'label' => 'Duplicate',
-        'is_numeric' => false,
-        'update_entry_meta_callback' => array( $this, 'update_entry_meta_duplicate' ), 
-        'is_default_column' => false
+        'is_numeric' => true,
+        'is_default_column' => true,
+        'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
     );
     return $entry_meta;
 	}
-	public function update_entry_meta_duplicate( $key, $lead, $form ) {
-    $value = $this->is_duplicate ? 'Yes' : 'No';
-    return $value;
+
+  /**
+   * Custom meta callback.
+   *
+   * @param array $key Entry meta key.
+   * @param array $lead The lead object.
+   * @param array $form The form object.
+   */
+	public function update_entry_meta( $key, $lead, $form ) {
+    return;
+	}
+
+	/**
+	 * Target for the gform_entry_info action. Displays the progress information on the entry detail page.
+	 *
+	 * @param $form_id
+	 * @param $entry
+	 */
+	public function filter_entry_info( $form_id, $entry ) {
+		$is_duplicate = rgar( $entry, 'is_duplicate' );
+		$info = '<span>' . $is_duplicate . '</span><br/><br/>';
+		printf( esc_html__( 'Duplicate: %s', 'gforms-edc' ), $info );
 	}
 
   /**
@@ -295,33 +314,10 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $source_page_number The page coming from.
    * @param array $current_page_number The page currently viewed.
    */
-  public function form_paging( $form, $source_page_number, $current_page_number ) {
+  public function action_post_paging( $form, $source_page_number, $current_page_number ) {
 
-    $email_field_id = $this->getFieldIDByType( $form, 'email', true );
+    return;
 
-    $search_criteria = array(
-	    'status'        => 'active',
-	    'field_filters' => array(
-        'mode' 				=> 'all',
-        array(
-          'key'   		=> $email_field_id,
-          'value' 		=> $_POST[ 'input_' . $email_field_id ]
-        ),
-        array(
-        	'key'				=> 'partial_entry_percent',
-        	'value'			=> ''
-      	)
-	    )
-		);
-
-    $entries = GFAPI::get_entries( $form['id'], $search_criteria );
-
-    if ( ! empty( $entries ) ) {
-    	// email already exists...
-
-    	$this->is_duplicate = true;
-    	// The goal here would be to redirect the user to the final step where they would submit and be rejected... hmm...
-    }
   }
 
   /**
@@ -329,7 +325,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @param array $form The form currently being processed.
    */
-  public function pre_submission( $form ) {
+  public function action_pre_submission( $form ) {
 
     // This section is used to validate any reasons for rejection, and append the data to the form
     $rejection_status_id = $this->getFieldIDByLabel( $form, 'Status' );
@@ -340,26 +336,22 @@ class GFEdcAddOn extends GFAddOn {
     $rejected_reason_string = null;
 
     foreach ($form['fields'] as $field) {
-
       $id = $field->id;
-
       // Age comparison
       if ( $field->type == 'date' ) {
-        // reject if <19 or >31 yrs
-        if ( $field->dateType == 'datefield' ) {
-          $glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
-          $date_array = array_filter( $_POST[ 'input_' . $id ] );
-          if ( ! empty( $date_array ) ) {
-	          $birth 	= implode( $glue, $date_array );
-	          $from 	= new DateTime( $birth );
-	          $to   	= new DateTime( 'today' );
-	          $age  	= $from->diff( $to )->y;
+        $glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
+        $date_array = array_filter( $_POST[ 'input_' . $id ] );
+        if ( ! empty( $date_array ) ) {
+          $birth 	= implode( $glue, $date_array );
+          $from 	= new DateTime( $birth );
+          $to   	= new DateTime( 'today' );
+          $age  	= $from->diff( $to )->y;
 
-	          if ( $age < 19 || $age > 31 ) {
-	            $rejected_array[ 'Age' ] = $age;
-	          }
+          if ( $age < 19 || $age > 31 ) {
+            $rejected_array[ 'Age' ] = $age;
           }
         }
+        continue;
       }
       // BMI comparison
       if ( $field->label == 'BMI' ) {
@@ -376,14 +368,18 @@ class GFEdcAddOn extends GFAddOn {
       	// calculate BMI from formula `w/h^2`
       	if ( $height > 0 && $weight > 0 ) {
 	      	$bmi = ( $weight ) / pow( $height, 2 );
+	      	$_POST[ 'input_' . $bmi_field_id ] = $bmi;
+      	} else {
+      		$_POST[ 'input_' . $bmi_field_id ] = 'N/A';
       	}
       	// determine rejection
         if ( $bmi < 18 || $bmi >= 27 ) {
           $rejected_array[ $field->label ] = $_POST[ 'input_' . $field->id ];
         }
+        continue;
       }
       // all other standard fields
-      elseif ( isset( $field->rejectVal ) ) {
+      if ( isset( $field->rejectVal ) ) {
         $rValArr = explode( ',', $field->rejectVal );
         if ( isset( $_POST[ 'input_' . $field->id ] ) && in_array( $_POST[ 'input_' . $field->id ], $rValArr ) ) {
           $rejected_array[ $field->label ] = $_POST[ 'input_' . $field->id ];
@@ -420,36 +416,33 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $entry The entry currently being processed.
    * @param array $form The form currently being processed.
    */
-  public function after_submission( $entry, $form ) {
+  public function action_after_submission( $entry, $form ) {
 
-    // Evaluate the rules configured for the custom_logic setting.
-    $result = $this->is_custom_logic_met( $form, $entry );
+  	$is_duplicate = ( $this->isDuplicate( $form, $entry ) ? 'Yes' : 'No' );
 
-    if ( $result ) {
+  	gform_update_meta( $entry['id'], 'is_duplicate', $is_duplicate );
 
-      $arr = array();
+    $arr = array();
 
-      foreach ($form['fields'] as $field) {
-        $id = $field->id;
-        $name = $field->label;
+    foreach ($form['fields'] as $field) {
+      $id = $field->id;
+      $name = $field->label;
 
-        if ( isset( $entry[ $id ] ) ) {
-          $arr[ $name ] = $entry[ $id ];
-        }
-        elseif ( is_array( $field->inputs ) ) {
-          $new_arr = array();
-          foreach ($field->inputs as $input) {
-            if ( ! isset($input['isHidden']) && isset( $entry[ $input['id'] ] ) && ! empty( $entry[ $input['id'] ] ) ) {
-              $new_arr[ $input['label'] ] = $entry[ $input['id'] ];
-            }
-          }
-          $arr[ $name ] = $new_arr;
-        }
-        else {
-          // nothing...
-        }
+      if ( isset( $entry[ $id ] ) ) {
+        $arr[ $name ] = $entry[ $id ];
       }
-
+      elseif ( is_array( $field->inputs ) ) {
+        $new_arr = array();
+        foreach ($field->inputs as $input) {
+          if ( ! isset($input['isHidden']) && isset( $entry[ $input['id'] ] ) && ! empty( $entry[ $input['id'] ] ) ) {
+            $new_arr[ $input['label'] ] = $entry[ $input['id'] ];
+          }
+        }
+        $arr[ $name ] = $new_arr;
+      }
+      else {
+        // nothing...
+      }
     }
   }
 
@@ -584,7 +577,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @param int $position The current property position.
    */
-  public function render_reject_val_setting( $position ) {
+  public function action_field_advanced_settings( $position ) {
     // Replace 150 with whatever position you want.
     if ( 150 !== $position ) {
       return;
@@ -600,12 +593,13 @@ class GFEdcAddOn extends GFAddOn {
         </li>
       </ul>
     </li>
-  <?php }
+  	<?php 
+  }
 
   /**
    * Custom scripting for our custom field setting.
    */
-  public function custom_field_setting_js() { ?>
+  public function action_editor_js() { ?>
     <script type="text/javascript">
       /*
        * Tell Gravity Forms that every field type should
@@ -622,7 +616,8 @@ class GFEdcAddOn extends GFAddOn {
         jQuery('#field_reject_val').val(field.rejectVal || '');
       });
     </script>
-  <?php }
+  	<?php 
+  }
 
   /**
    * Populate the "My Attribute" tooltip.
@@ -631,7 +626,7 @@ class GFEdcAddOn extends GFAddOn {
    * @return array The $tooltips array with a new key for
    * form_field_reject_val.
    */
-  public function reject_val_tooltip( $tooltips ) {
+  public function filter_tooltips( $tooltips ) {
     $tooltips['form_field_reject_val'] = sprintf(
       '<h6>%s</h6>%s',
       __( 'Rejection Value', 'gforms-edc' ),
@@ -652,11 +647,8 @@ class GFEdcAddOn extends GFAddOn {
    * @return bool
    */
   public function is_valid_setting( $value ) {
-    
     return strlen( $value ) > 0;
-  
-  }
-
+	}
 
   /**
    * The helper to get field IDs by field Type
@@ -668,23 +660,14 @@ class GFEdcAddOn extends GFAddOn {
    * @return array
    */
   public function getFieldIDByType( $form, $type, $use_input_type = false ) {
-
     if ( is_array( $type ) ) {
-
       $type = $type[0];
-
     }
-    
     $fields = GFAPI::get_fields_by_type( $form, array( $type ), $use_input_type );
-
     if ( ! empty( $fields ) ) {
-      
       return $fields[0]->id;
-    
     }
-
     return false;
-
   }
 
   /**
@@ -696,25 +679,55 @@ class GFEdcAddOn extends GFAddOn {
    * @return bool
    */
   public function getFieldIDByLabel( $form, $label ) {
-
     $fields = array();
-
     foreach( $form[ 'fields' ] as $field ) {
-
       if ( $field->label == $label )
-
         $fields[] = $field;
-
     }
-
     if ( ! empty( $fields ) ) {
-      
       return $fields[0]->id;
-    
     }
-
     return false;
+  }
 
+  /**
+   * Get entries by email
+   *
+   * @param obj $form The form object.
+   * @param obj $post_object The post object.
+   *
+   * @return array
+   */
+  public function getEntries( $form, $key, $value ) {
+
+    $search_criteria = array(
+	    'status'        => 'active',
+	    'field_filters' => array(
+        'mode' 				=> 'all',
+        array(
+          'key'   		=> $key,
+          'value' 		=> $value
+        )
+	    )
+		);
+
+		$sorting = array( 'key' => 'id', 'direction' => 'ASC', 'is_numeric' => true );
+
+    $entries = GFAPI::get_entries( $form['id'], $search_criteria, $sorting );
+
+    return $entries;
+  }
+
+  public function isDuplicate( $form, $entry ) {
+  	$fields = GFAPI::get_fields_by_type( $form, array( 'email' ), true );
+  	if ( ! empty( $fields ) ) {
+	  	$entries = $this->getEntries( $form, $fields[0]->id, $entry[ $fields[0]->id ] );
+			if ( ! empty( $entries ) && count( $entries ) > 1 ) {
+				return true;
+			}
+			return false;
+		}
+		return array( 'Error' => 'no email field' );
   }
 
 }
