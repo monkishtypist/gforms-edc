@@ -454,6 +454,15 @@ class GFEdcAddOn extends GFAddOn {
    */
   public function action_after_submission( $entry, $form ) {
 
+  	$name_field_id = $this->get_field_id_by_type( $form, 'name' );
+  	$name_first = $entry[ $name_field_id . '.3' ];
+  	$name_last = $entry[ $name_field_id . '.6' ];
+
+  	$email_field_id = $this->get_field_id_by_type( $form, 'email' );
+  	$email = $entry[ $email_field_id ];
+
+  	$site = get_site_url();
+  	$parsed_site = parse_url( $site );
     // $arr = array();
 
     /*foreach ($form['fields'] as $field) {
@@ -482,72 +491,50 @@ class GFEdcAddOn extends GFAddOn {
 	    $message = array(
 	        'html' => $this->get_mandrill_html( $entry, $form ),
 	        'text' => 'Example text content',
-	        'subject' => 'example subject',
-	        'from_email' => 'tim@monkishtypist.com',
-	        'from_name' => 'Example Name',
+	        'subject' => 'Thank you for applying with Egg Donor Central',
+	        'from_email' => 'donor@fairfaxeggbank.com',
+	        'from_name' => 'Fairfax Egg Bank',
 	        'to' => array(
 	            array(
-	                'email' => 'tim@monkishtypist.com',
-	                'name' => 'Recipient Name',
+	                'email' => $email,
+	                'name' => $name_first . ' ' . $name_last,
 	                'type' => 'to'
 	            )
 	        ),
-	        'headers' => array('Reply-To' => 'message.reply@example.com'),
+	        'headers' => array('Reply-To' => 'donor@fairfaxeggbank.com'),
 	        'important' => false,
-	        'track_opens' => null,
-	        'track_clicks' => null,
+	        'track_opens' => true,
+	        'track_clicks' => true,
 	        'auto_text' => null,
 	        'auto_html' => null,
 	        'inline_css' => null,
 	        'url_strip_qs' => null,
 	        'preserve_recipients' => null,
 	        'view_content_link' => null,
-	        'bcc_address' => 'message.bcc_address@example.com',
+	        // 'bcc_address' => 'message.bcc_address@example.com',
 	        'tracking_domain' => null,
 	        'signing_domain' => null,
 	        'return_path_domain' => null,
 	        'merge' => true,
 	        'merge_language' => 'mailchimp',
-	        'global_merge_vars' => array(
-	            array(
-	                'name' => 'merge1',
-	                'content' => 'merge1 content'
-	            )
-	        ),
 	        'merge_vars' => array(
 	            array(
-	                'rcpt' => 'recipient.email@example.com',
-	                'vars' => array(
-	                    array(
-	                        'name' => 'merge2',
-	                        'content' => 'merge2 content'
-	                    )
-	                )
+	                'rcpt' => $email,
+	                'vars' => array()
 	            )
 	        ),
-	        'tags' => array('password-resets'),
-	        'subaccount' => 'customer-123',
-	        'google_analytics_domains' => array('example.com'),
-	        'google_analytics_campaign' => 'message.from_email@example.com',
-	        'metadata' => array('website' => 'www.example.com'),
+	        'tags' => array('application', $this->bool_to_approve_reject( $this->get_approval_status( $entry, $form ) ) ),
+	        // 'subaccount' => 'customer-123',
+	        'google_analytics_domains' => array( $parsed_site['host'] ),
+	        'google_analytics_campaign' => 'donor@fairfaxeggbank.com',
+	        'metadata' => array('website' => get_site_url() ),
 	        'recipient_metadata' => array(
 	            array(
-	                'rcpt' => 'recipient.email@example.com',
-	                'values' => array('user_id' => 123456)
-	            )
-	        ),
-	        'attachments' => array(
-	            array(
-	                'type' => 'text/plain',
-	                'name' => 'myfile.txt',
-	                'content' => 'ZXhhbXBsZSBmaWxl'
-	            )
-	        ),
-	        'images' => array(
-	            array(
-	                'type' => 'image/png',
-	                'name' => 'IMAGECID',
-	                'content' => 'ZXhhbXBsZSBmaWxl'
+	                'rcpt' => $email,
+	                'values' => array(
+	                	'name_first' => $name_first,
+	                	'name_last' => $name_last
+                	)
 	            )
 	        )
 	    );
@@ -555,7 +542,7 @@ class GFEdcAddOn extends GFAddOn {
 	    $ip_pool = 'Main Pool';
 	    $send_at = gmdate( "Y-m-d H:i:s", time() );
 	    $result = $this->_mandrill->messages->send($message, $async, $ip_pool, $send_at);
-	    print_r($result);
+	    // print_r($result);
 	    /*
 	    Array
 	    (
