@@ -12,15 +12,15 @@ class GFEdcAddOn extends GFAddOn {
   protected $_title = 'Gravity Forms EDC Add-On';
   protected $_short_title = 'EDC';
 
-  public $is_duplicate = false;
+  // public $is_duplicate = false;
 
   protected $_mandrill_host = 'smtp.mandrillapp.com';
   protected $_mandrill_port = 587;
 
   private static $_instance = null;
 
-  public $_mandrill;
-  public $_madrill_api_key;
+  // public $_mandrill;
+  // public $_madrill_api_key;
 
   /**
    * Get an instance of this class.
@@ -46,9 +46,11 @@ class GFEdcAddOn extends GFAddOn {
 		add_filter( 'gform_entry_info', array( $this, 'filter_entry_info' ), 10, 2 );
     add_filter( 'gform_tooltips', array( $this, 'filter_tooltips' ), 10, 1 );
     add_filter( 'gform_merge_tag_filter', array( $this, 'filter_all_fields' ), 10, 5 );
+    add_filter( 'gform_confirmation', array( $this, 'filter_custom_confirmation' ), 10, 4 );
 
     add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
     add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
+    add_action( 'gform_entry_created', array( $this, 'action_entry_created' ), 10, 2 );
     add_action( 'gform_after_submission', array( $this, 'action_after_submission' ), 10, 2 );
     add_action( 'gform_field_advanced_settings', array( $this, 'action_field_advanced_settings' ), 10, 1 );
     add_action( 'gform_editor_js', array( $this, 'action_editor_js' ), 10 );
@@ -114,7 +116,7 @@ class GFEdcAddOn extends GFAddOn {
     return array_merge( parent::styles(), $styles );
   }
 
-  // # FRONTEND FUNCTIONS --------------------------------------------------------------------------------------------
+  // # FILTER FUNCTIONS --------------------------------------------------------------------------------------------
 
   /**
    * Filter {all_fields} merge tag.
@@ -152,6 +154,54 @@ class GFEdcAddOn extends GFAddOn {
     }
 
     return $button;
+  }
+
+  /**
+   * Custom confirmation message...
+   *
+   * @param 
+   *
+   */
+  public function filter_custom_confirmation( $confirmation, $form, $entry, $ajax ) {
+  	$is_duplicate = $this->is_duplicate_email( $form, $entry );
+  	$approved = $this->get_approval_status( $entry, $form );
+
+  	$name_field_id = $this->get_field_id_by_type( $form, 'name' );
+  	$name_first = $entry[ $name_field_id . '.3' ];
+
+  	if ( $is_duplicate ) {
+  		$confirmation = '<p>Hello ' . $name_first . ',</p>
+				<p>Thank you for taking the time to submit an online application for our donor egg program. It appears you have previously submitted an application. Therefore we are unable to accept your online application at this time.</p>
+				<p>If your answers to the application questionnaire have changed, please contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a> and we can assist you with updating your application.</p>
+				<p>Sincerely,<br />
+					<b>The Fairfax EggBank Donor Egg Team</b></p>';
+  	} elseif ( $approved ) {
+			$confirmation = '<h1>Congratulations ' . $name_first . '! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</h1>
+				<p>So what\'s next? The full long-form application. We admit... it\'s called "long" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
+				<p><b>WHAT YOU’LL NEED TO DO:</b>
+					<ul>
+					 	<li>Click on the CONTINUE button below and register to start the application.</li>
+					 	<li>Fill out the "profile" and "medical" section. DON’T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li>
+					 	<li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don’t do this, we won\'t receive notification of your submission.</li>
+					</ul>
+				</p>
+				<a class="btn button gform_button" href="www.givfdonor.com">CONTINUE</a>
+				<p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100.  Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p>
+				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you\'ll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you\'ll be entered 1 time into our raffle. <b>Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification.</b> If you win, we will contact you via e-mail.</p>
+				<p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p>
+				<p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you\'re making to become a donor. If you have any questions or concerns, don\'t hesitate to contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a>.</p>
+				<p>Sincerely,<br />
+					<b>The Fairfax EggBank Donor Egg Team</b></p>';
+		} else {
+			$confirmation = '<p>Hello ' . $name_first . ',</p>
+				<p>Thank you for taking the time to submit an online application for our donor egg program. We regret to inform you that we are unable to accept you into our egg donation program based on the information provided.</p>
+				<p>Many factors are involved in our eligibility determination such as requirements put forth by the FDA, clinical geneticists and our medical directors. Unfortunately we are unable to disclose the specific reasons why an applicant may not be eligible, however our basic requirements can be found on our website at <a href="http://www.eggdonorcentral.com/egg-donor-requirements">http://www.eggdonorcentral.com/egg-donor-requirements</a> for your reference. You may also find our FAQ section to be helpful at <a href="https://www.eggdonorcentral.com/faqs">https://www.eggdonorcentral.com/faqs</a>.</p>
+				<p>We greatly appreciate your interest in our program and wish you all the best.</p>
+				<p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>';
+		}
+
+		return $confirmation;
+
   }
 
   // # ADMIN FUNCTIONS -----------------------------------------------------------------------------------------------
@@ -295,14 +345,9 @@ class GFEdcAddOn extends GFAddOn {
 						'name'    => 'wtfield',
 						'tooltip' => esc_html__( 'Select the field used to indicate weight.', 'gforms-edc' ),
 						'choices' => $fields,
-					),
-          array(
-            'label' => esc_html__( 'Condition', 'gforms-edc' ),
-            'type'  => 'custom_logic_type',
-            'name'  => 'custom_logic',
-          ),
-        ),
-      ),
+					)
+        )
+      )
     );
   }
 
@@ -315,17 +360,29 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $form_id The ID of the form from which the entry value was submitted.
    */
   public function filter_entry_meta( $entry_meta, $form_id ) {
-    $entry_meta[ 'is_duplicate' ] = array(
+    $entry_meta[ 'edc_is_duplicate' ] = array(
         'label' => 'Duplicate',
         'is_numeric' => true,
         'is_default_column' => true,
-        'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
+        // 'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
     );
-    $entry_meta[ 'mandrill_status' ] = array(
+    $entry_meta[ 'edc_application_status' ] = array(
+        'label' => 'Application Status',
+        'is_numeric' => false,
+        'is_default_column' => true,
+        // 'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
+    );
+    $entry_meta[ 'edc_application_rejection_details' ] = array(
+        'label' => 'Rejection Details',
+        'is_numeric' => false,
+        'is_default_column' => false,
+        // 'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
+    );
+    $entry_meta[ 'edc_mandrill_status' ] = array(
         'label' => 'Mandrill Status',
         'is_numeric' => false,
         'is_default_column' => false,
-        'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
+        // 'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
     );
     return $entry_meta;
 	}
@@ -348,9 +405,15 @@ class GFEdcAddOn extends GFAddOn {
 	 * @param $entry
 	 */
 	public function filter_entry_info( $form_id, $entry ) {
-		$is_duplicate = rgar( $entry, 'is_duplicate' );
-		$info = '<span>' . $is_duplicate . '</span><br/><br/>';
-		printf( esc_html__( 'Duplicate: %s', 'gforms-edc' ), $info );
+		$br = '<br /><br />';
+		$is_duplicate = rgar( $entry, 'edc_is_duplicate' );
+		$application_status = rgar( $entry, 'edc_application_status' );
+		printf( esc_html__( 'Duplicate: %s %s', 'gforms-edc' ), $is_duplicate, $br );
+		printf( esc_html__( 'Application Status: %s %s', 'gforms-edc' ), $application_status, $br );
+		if ( $application_status == 'Rejected' ) {
+			$application_details = rgar( $entry, 'edc_application_rejection_details' );
+			printf( esc_html__( 'Reason for Rejection: %s %s', 'gforms-edc' ), $application_details, $br );
+		}
 	}
 
   /**
@@ -360,100 +423,27 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $source_page_number The page coming from.
    * @param array $current_page_number The page currently viewed.
    */
-  public function action_post_paging( $form, $source_page_number, $current_page_number ) {
-
-    return;
-
-  }
+  public function action_post_paging( $form, $source_page_number, $current_page_number ) {}
 
   /**
    * Performing a custom action at the beginning of the form submission process.
    *
    * @param array $form The form currently being processed.
    */
-  public function action_pre_submission( $form ) {
+  public function action_pre_submission( $form ) {}
 
-    // This section is used to validate any reasons for rejection, and append the data to the form
-    $rejection_status_id = $this->get_field_id_by_label( $form, 'Status' );
-    $rejection_reason_id = $this->get_field_id_by_label( $form, 'Rejection Reason' );
+  /**
+   * This hook fires after the lead has been created but before the post has been 
+   * created, notifications have been sent and the confirmation has been processed.
+   *
+   * @param array $entry The entry currently being processed.
+   * @param array $form The form currently being processed.
+   */
+  public function action_entry_created( $entry, $form ) {
 
-    $rejected_status = false;
-    $rejected_array = array();
-    $rejected_reason_string = null;
+  	$is_duplicate = $this->update_is_duplicate_email( $entry, $form );
 
-    foreach ($form['fields'] as $field) {
-      $id = $field->id;
-      // Age comparison
-      if ( $field->type == 'date' ) {
-        $glue = ( $field->dateFormat == 'dmy' ? '-' : '/' );
-        $date_array = array_filter( $_POST[ 'input_' . $id ] );
-        if ( ! empty( $date_array ) ) {
-          $birth 	= implode( $glue, $date_array );
-          $from 	= new DateTime( $birth );
-          $to   	= new DateTime( 'today' );
-          $age  	= $from->diff( $to )->y;
-
-          if ( $age < 19 || $age > 31 ) {
-            $rejected_array[ 'Age' ] = $age;
-          }
-        }
-        continue;
-      }
-      // BMI comparison
-      if ( $field->label == 'BMI' ) {
-      	// set defaults
-      	$bmi = 0;
-      	// get field id's
-      	$bmi_field_id = $form[ 'gforms-edc' ][ 'bmifield' ]; // $this->get_field_id_by_label( $form, 'BMI' );
-      	$height_field_id_ft = $form[ 'gforms-edc' ][ 'htftfield' ]; // $this->get_field_id_by_label( $form, 'Height (feet)' );
-      	$height_field_id_in = $form[ 'gforms-edc' ][ 'htinfield' ]; // $this->get_field_id_by_label( $form, '(inches)' );
-      	$weight_field_id = $form[ 'gforms-edc' ][ 'wtfield' ]; // $this->get_field_id_by_label( $form, 'Weight (lbs)' );
-      	// calculate height and weight and convert to metric (m and kg)
-      	$height = ( ( ( ( $_POST[ 'input_' . $height_field_id_ft ] ) * 12 ) + $_POST[ 'input_' . $height_field_id_in ] ) * 0.0254 );
-      	$weight = ( $_POST[ 'input_' . $weight_field_id ] * 0.453592 );
-      	// calculate BMI from formula `w/h^2`
-      	if ( $height > 0 && $weight > 0 ) {
-	      	$bmi = ( $weight ) / pow( $height, 2 );
-	      	$_POST[ 'input_' . $bmi_field_id ] = $bmi;
-      	} else {
-      		$_POST[ 'input_' . $bmi_field_id ] = 'N/A';
-      	}
-      	// determine rejection
-        if ( $bmi < 18 || $bmi >= 27 ) {
-          $rejected_array[ $field->label ] = $_POST[ 'input_' . $field->id ];
-        }
-        continue;
-      }
-      // all other standard fields
-      if ( isset( $field->rejectVal ) ) {
-        $rValArr = explode( ',', $field->rejectVal );
-        if ( isset( $_POST[ 'input_' . $field->id ] ) && in_array( $_POST[ 'input_' . $field->id ], $rValArr ) ) {
-          $rejected_array[ $field->label ] = $_POST[ 'input_' . $field->id ];
-        }
-      }
-
-    }
-
-    // Remove empty array values
-    $rejected_array = array_filter( $rejected_array );
-
-    // If still exist reasons for rejection
-    if ( ! empty( $rejected_array ) ) {
-
-      // Update rejected status to TRUE
-      $rejected_status = true;
-
-      // And for each reason, append to final output string
-      foreach ( $rejected_array as $key => $value ) {
-        $rejected_reason_string .= $key . ' ' . $value . '; ';
-      }
-    
-    }
-    
-    // Finally, set form values to reflect rejections
-    $_POST[ 'input_' . $rejection_status_id ] = ( $rejected_status ? 'Rejected' : 'Approved' );
-    $_POST[ 'input_' . $rejection_reason_id ] = $rejected_reason_string;
-    
+  	$approval_status = $this->update_approval_status( $entry, $form );
   }
 
   /**
@@ -464,13 +454,9 @@ class GFEdcAddOn extends GFAddOn {
    */
   public function action_after_submission( $entry, $form ) {
 
-  	$is_duplicate = ( $this->is_duplicate_email( $form, $entry ) ? 'Yes' : 'No' );
+    // $arr = array();
 
-  	gform_update_meta( $entry['id'], 'is_duplicate', $is_duplicate );
-
-    $arr = array();
-
-    foreach ($form['fields'] as $field) {
+    /*foreach ($form['fields'] as $field) {
       $id = $field->id;
       $name = $field->label;
 
@@ -489,12 +475,12 @@ class GFEdcAddOn extends GFAddOn {
       else {
         // nothing...
       }
-    }
+    }*/
 
     // MANDRILL --------------------------------------------------------------------------------------------------
 	  try {
 	    $message = array(
-	        'html' => '<p>Example HTML content</p>',
+	        'html' => $this->get_mandrill_html( $entry, $form ),
 	        'text' => 'Example text content',
 	        'subject' => 'example subject',
 	        'from_email' => 'tim@monkishtypist.com',
@@ -583,7 +569,7 @@ class GFEdcAddOn extends GFAddOn {
 	    
 	    )
 	    */
-	    gform_update_meta( $entry['id'], 'mandrill_status', $result[0]['status'] );
+	    gform_update_meta( $entry['id'], 'edc_mandrill_status', $result[0]['status'] );
 
 		} catch(Mandrill_Error $e) {
 		    // Mandrill errors are thrown as exceptions
@@ -591,7 +577,6 @@ class GFEdcAddOn extends GFAddOn {
 		    // A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
 		    throw $e;
 		}
-
   }
 
 
@@ -603,7 +588,7 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $field The field properties.
    * @param bool|true $echo Should the setting markup be echoed.
    */
-  public function settings_custom_logic_type( $field, $echo = true ) {
+  /*public function settings_custom_logic_type( $field, $echo = true ) {
 
     // Get the setting name.
     $name = $field['name'];
@@ -634,14 +619,14 @@ class GFEdcAddOn extends GFAddOn {
     );
 
     echo $str;
-  }
+  }*/
 
   /**
    * Build an array of choices containing fields which are compatible with conditional logic.
    *
    * @return array
    */
-  public function get_conditional_logic_fields() {
+  /*public function get_conditional_logic_fields() {
     $form   = $this->get_current_form();
     $fields = array();
     foreach ( $form['fields'] as $field ) {
@@ -673,7 +658,7 @@ class GFEdcAddOn extends GFAddOn {
     }
 
     return $fields;
-  }
+  }*/
 
   /**
    * Evaluate the conditional logic.
@@ -683,7 +668,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @return bool
    */
-  public function is_custom_logic_met( $form, $entry ) {
+  /*public function is_custom_logic_met( $form, $entry ) {
     if ( $this->is_gravityforms_supported( '2.0.7.4' ) ) {
       // Use the helper added in Gravity Forms 2.0.7.4.
 
@@ -715,7 +700,7 @@ class GFEdcAddOn extends GFAddOn {
     );
 
     return GFCommon::evaluate_conditional_logic( $logic, $form, $entry );
-  }
+  }*/
 
 
   // # CUSTOM FIELD SETTINGS -------------------------------------------------------------------------------------------------------
@@ -768,7 +753,7 @@ class GFEdcAddOn extends GFAddOn {
   }
 
   /**
-   * Populate the "My Attribute" tooltip.
+   * Populate the custom field tooltip.
    *
    * @param array $tooltips Existing Gravity Forms tooltips.
    * @return array The $tooltips array with a new key for
@@ -779,13 +764,161 @@ class GFEdcAddOn extends GFAddOn {
       '<h6>%s</h6>%s',
       __( 'Rejection Value', 'gforms-edc' ),
       __( 'Comma separated list. Mark as rejected if this field contains any one of these values.', 'gforms-edc' )
-   );
+		);
 
-   return $tooltips;
+		return $tooltips;
   }
 
 
   // # HELPERS -------------------------------------------------------------------------------------------------------
+
+  /**
+   * Update approval status and rejection reasons if any
+   *
+   * @param obj $entry The entry object.
+   * @param obj $form The form object.
+   */
+  public function update_approval_status( $entry, $form ) {
+
+    $approved = true;
+    $rejected_array = array();
+    $rejected_reason_string = null;
+
+    foreach ($form['fields'] as $field) {
+      $field_id = $field->id;
+      
+      // Age comparison
+      if ( $field->type == 'date' ) {
+        $date = $entry[ $field_id ];
+        if ( ! empty( $date ) ) {
+          $from 	= new DateTime( $date );
+          $to   	= new DateTime( 'today' );
+          $age  	= $from->diff( $to )->y;
+
+          if ( $age < 19 || $age > 31 ) {
+            $rejected_array[ 'Age' ] = $age;
+          }
+        }
+        continue;
+      }
+      
+      // BMI comparison
+      if ( $field_id == $form[ 'gforms-edc' ][ 'bmifield' ] ) {
+      	// set defaults
+      	$bmi = 0;
+      	// get field id's
+      	$height_field_id_ft = $form[ 'gforms-edc' ][ 'htftfield' ];
+      	$height_field_id_in = $form[ 'gforms-edc' ][ 'htinfield' ];
+      	$weight_field_id = $form[ 'gforms-edc' ][ 'wtfield' ];
+      	// calculate height and weight and convert to metric (m and kg)
+      	$height = ( ( ( ( $entry[ $height_field_id_ft ] ) * 12 ) + $entry[ $height_field_id_in ] ) * 0.0254 );
+      	$weight = ( $entry[ $weight_field_id ] * 0.453592 );
+      	// calculate BMI from formula `w/h^2` and set BMI field value
+      	if ( $height > 0 && $weight > 0 ) {
+	      	$bmi = ( $weight ) / pow( $height, 2 );
+      	} else {
+      		$bmi = null;
+      	}
+      	$bmi_result = GFAPI::update_entry_field( $entry['id'], $field_id, $bmi );
+      	// determine rejection
+        if ( $bmi < 18 || $bmi >= 27 ) {
+          $rejected_array[ 'BMI' ] = $bmi;
+        }
+        continue;
+      }
+      
+      // all other standard fields
+      if ( isset( $field->rejectVal ) ) {
+        $reject_val_arr = explode( ',', $field->rejectVal );
+        if ( isset( $entry[ $field_id ] ) && in_array( $entry[ $field_id ], $reject_val_arr ) ) {
+          $rejected_array[ $field->label ] = $entry[ $field_id ];
+        }
+      }
+
+    }
+
+    // Remove empty array values
+    $rejected_array = array_filter( $rejected_array );
+
+    // If still exist reasons for rejection
+    if ( ! empty( $rejected_array ) ) {
+
+      // Update rejected status to TRUE
+      $approved = false;
+
+      // And for each reason, append to final output string
+      foreach ( $rejected_array as $key => $value ) {
+        $rejected_reason_string .= $key . ' ' . $value . '; ';
+      }
+    
+    }
+    
+    // Finally, set form values to reflect rejections
+    $approval_string = $this->bool_to_approve_reject( $approved );
+    gform_update_meta( $entry['id'], 'edc_application_status', $approval_string );
+    gform_update_meta( $entry['id'], 'edc_application_rejection_details', $rejected_reason_string );
+
+    return $approved;
+  }
+
+  public function get_approval_status( $entry, $form ) {
+
+    $approved = true;
+
+    foreach ($form['fields'] as $field) {
+      $field_id = $field->id;
+      
+      // Age comparison
+      if ( $field->type == 'date' ) {
+        $date = $entry[ $field_id ];
+        if ( ! empty( $date ) ) {
+          $from 	= new DateTime( $date );
+          $to   	= new DateTime( 'today' );
+          $age  	= $from->diff( $to )->y;
+
+          if ( $age < 19 || $age > 31 ) {
+            $approved = false;
+          }
+        }
+        continue;
+      }
+      
+      // BMI comparison
+      if ( $field_id == $form[ 'gforms-edc' ][ 'bmifield' ] ) {
+      	// set defaults
+      	$bmi = 0;
+      	// get field id's
+      	$height_field_id_ft = $form[ 'gforms-edc' ][ 'htftfield' ];
+      	$height_field_id_in = $form[ 'gforms-edc' ][ 'htinfield' ];
+      	$weight_field_id = $form[ 'gforms-edc' ][ 'wtfield' ];
+      	// calculate height and weight and convert to metric (m and kg)
+      	$height = ( ( ( ( $entry[ $height_field_id_ft ] ) * 12 ) + $entry[ $height_field_id_in ] ) * 0.0254 );
+      	$weight = ( $entry[ $weight_field_id ] * 0.453592 );
+      	// calculate BMI from formula `w/h^2` and set BMI field value
+      	if ( $height > 0 && $weight > 0 ) {
+	      	$bmi = ( $weight ) / pow( $height, 2 );
+      	} else {
+      		$bmi = null;
+      	}
+      	// determine rejection
+        if ( $bmi < 18 || $bmi >= 27 ) {
+          $approved = false;
+        }
+        continue;
+      }
+      
+      // all other standard fields
+      if ( isset( $field->rejectVal ) ) {
+        $reject_val_arr = explode( ',', $field->rejectVal );
+        if ( isset( $entry[ $field_id ] ) && in_array( $entry[ $field_id ], $reject_val_arr ) ) {
+          $approved = false;
+        }
+      }
+
+    }
+
+    return $approved;
+  }
 
   /**
    * The feedback callback for the 'mytextbox' setting on the plugin settings page and the 'mytext' setting on the form settings page.
@@ -801,9 +934,9 @@ class GFEdcAddOn extends GFAddOn {
   /**
    * The helper to get field IDs by field Type
    *
-   * @param onj    $form             An array containing all the current form's properties.
-   * @param str   $types             Indicates the type of field to be returned.
-   * @param bool  $use_input_type   Optional. Default is false. If available should the fields inputType property be used instead of the type property.
+   * @param obj $form An array containing all the current form's properties.
+   * @param str $types Indicates the type of field to be returned.
+   * @param bool $use_input_type If available should the fields inputType property be used instead of the type property.
    *
    * @return array
    */
@@ -866,20 +999,109 @@ class GFEdcAddOn extends GFAddOn {
     return $entries;
   }
 
-  public function is_duplicate_email( $form, $entry ) {
+  /**
+   * Check if email already exists in entries
+   *
+   * @param obj $form The form object.
+   * @param obj $entry The entry object.
+   * @param bool $partial_entries If this form uses partial entries.
+   *
+   * @return array
+   */
+  public function is_duplicate_email( $form, $entry, $partial_entries = true ) {
   	$fields = GFAPI::get_fields_by_type( $form, array( 'email' ), true );
+  	$count = ( $partial_entries ? 1 : 0 );
   	if ( ! empty( $fields ) ) {
 	  	$entries = $this->get_entries_by_key( $form, $fields[0]->id, $entry[ $fields[0]->id ] );
-			if ( ! empty( $entries ) && count( $entries ) > 1 ) {
+			if ( ! empty( $entries ) && count( $entries ) > $count ) {
 				return true;
 			}
 			return false;
 		}
-		return array( 'Error' => 'no email field' );
+		return null;
+  }
+
+  /**
+   * Check if email already exists in entries and update status
+   *
+   * @param obj $form The form object.
+   * @param obj $entry The entry object.
+   * @param bool $partial_entries If this form uses partial entries.
+   *
+   * @return array
+   */
+  public function update_is_duplicate_email( $entry, $form, $partial_entries = true ) {
+
+  	$is_duplicate = $this->bool_to_yes_no( $this->is_duplicate_email( $form, $entry, $partial_entries ) );
+
+  	gform_update_meta( $entry['id'], 'edc_is_duplicate', $is_duplicate );
+  }
+
+  /**
+   * Convert boolean to Approved / Rejected
+   *
+   * @param bool $bool The boolean
+	 *
+   * @return string
+   */
+  public function bool_to_approve_reject( $bool = true ) {
+  	if ( $bool ) {
+  		return 'Approved';
+  	}
+  	return 'Rejected';
+  }
+
+  /**
+   * Convert boolean to Yes / No
+   *
+   * @param bool $bool The boolean
+	 *
+   * @return string
+   */
+  public function bool_to_yes_no( $bool = false ) {
+  	if ( $bool ) {
+  		return 'Yes';
+  	}
+  	return 'No';
   }
 
 
+  // MANDRILL --------------------------------------------------------------------------------------------------
 
+  public function get_mandrill_html( $entry, $form, $approved = true ) {
 
+  	$name_field_id = $this->get_field_id_by_type( $form, 'name' );
+  	$name_first = $entry[ $name_field_id . '.3' ];
+
+  	if ( $approved ) {
+			$html = "<p>Hello {$name_first}!</p>
+				<p><b>Congratulations! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</b></p>
+				<p>So what's next? The full long-form application. We admit... it's called \"long\" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
+				<p><b>WHAT YOU'LL NEED TO DO:</b><ul><li>Save this e-mail! It will be critical as a checklist.</li><li>If you haven't already, visit <a href=\"www.givfdonor.com\">www.givfdonor.com</a> and register to start the application.</li><li>Fill out the \"profile\" and \"medical\" section. DON'T WORRY about completing the \"personal summary\" or the \"essay summary\" — this will be completed later in the process.</li><li>When you're done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don't do this, we won't receive notification of your submission.</li></ul></p>
+				<p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100. Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p>
+				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you'll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you'll be entered 1 time into our raffle. Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification. If you win, we will contact you via e-mail.</p>
+				<p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p>
+				<p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you're making to become a donor. If you have any questions or concerns, don't hesitate to contact us at <a href=\"mailto:donor@fairfaxeggbank.com\">donor@fairfaxeggbank.com</a>.</p>
+				<hr />
+				<p><b>Checklist of to do's:</b><br />
+					[ ] Set your target date for completing the application. Mark it on your calendar.<br />
+					[ ] Gather documentation of your and your family's medical history.<br />
+					[ ] Register at www.givfdonor.com to start the application.<br />
+					[ ] Fill out the \"profile\" and \"medical\" sections of the application.<br />
+					[ ] Re-check every question once you've completed the application.<br />
+					[ ] Complete the electronic signature.<br />
+					[ ] Click SUBMIT.</p>
+				<p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>";
+		} else {
+			$html = "<p>Hello {$name_first}!</p>
+				<p>Thank you for taking the time to submit an online application for our donor egg program. We regret to inform you that we are unable to accept you into our egg donation program based on the information provided.</p>
+				<p>Many factors are involved in our eligibility determination such as requirements put forth by the FDA, clinical geneticists and our medical directors. Unfortunately we are unable to disclose the specific reasons why an applicant may not be eligible, however our basic requirements can be found on our website at <a href=\"http://www.eggdonorcentral.com/egg-donor-requirements\">http://www.eggdonorcentral.com/egg-donor-requirements</a> for your reference. You may also find our FAQ section to be helpful at <a href=\"https://www.eggdonorcentral.com/faqs\">https://www.eggdonorcentral.com/faqs</a>.</p>
+				<p>We greatly appreciate your interest in our program and wish you all the best.</p>
+				<p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>";
+		}
+
+		return $html;
+
+	}
 
 }
