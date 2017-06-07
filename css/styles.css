@@ -31,6 +31,29 @@
   white-space: nowrap;
 }
 
+/* List */
+body .gform_wrapper div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted,
+body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted {
+  list-style-type: none !important;
+  margin: 0 !important;
+}
+
+body .gform_wrapper div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li,
+body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li {
+  display: inline-block;
+  list-style-type: none !important;
+  margin-bottom: 2px !important;
+  margin-right: 4px;
+}
+body .gform_wrapper div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li:after,
+body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li:after {
+  content: ", ";
+}
+body .gform_wrapper div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li:last-child:after,
+body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul.bulleted li:last-child:after {
+  content: "";
+}
+
 
 /* Buttons */
 .gform_wrapper .gform_page_footer .button.gform_button, 

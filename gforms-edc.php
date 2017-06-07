@@ -37,7 +37,9 @@ class GF_EDC_AddOn_Bootstrap {
             return;
         }
 
-        require_once( 'class-gforms-edc.php' );
+        require_once 'class-gforms-edc.php';
+
+        require_once 'vendor/mandrill/mandrill/src/Mandrill.php';
 
         GFAddOn::register( 'GFEdcAddOn' );
     }

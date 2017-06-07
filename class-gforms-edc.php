@@ -19,6 +19,9 @@ class GFEdcAddOn extends GFAddOn {
 
   private static $_instance = null;
 
+  public $_mandrill;
+  public $_madrill_api_key;
+
   /**
    * Get an instance of this class.
    *
@@ -42,12 +45,21 @@ class GFEdcAddOn extends GFAddOn {
     add_filter( 'gform_entry_meta', array( $this, 'filter_entry_meta' ), 10, 2);
 		add_filter( 'gform_entry_info', array( $this, 'filter_entry_info' ), 10, 2 );
     add_filter( 'gform_tooltips', array( $this, 'filter_tooltips' ), 10, 1 );
+    add_filter( 'gform_merge_tag_filter', array( $this, 'filter_all_fields' ), 10, 5 );
 
     add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
     add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
     add_action( 'gform_after_submission', array( $this, 'action_after_submission' ), 10, 2 );
     add_action( 'gform_field_advanced_settings', array( $this, 'action_field_advanced_settings' ), 10, 1 );
     add_action( 'gform_editor_js', array( $this, 'action_editor_js' ), 10 );
+
+    if ( $this->get_plugin_setting('mandrillAPIKey') ) {
+    	
+    	$this->_mandrill_api_key = $this->get_plugin_setting('mandrillAPIKey');
+    	$this->_mandrill = new Mandrill( $this->_mandrill_api_key );
+    }
+
+
   }
 
   // # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
@@ -94,7 +106,7 @@ class GFEdcAddOn extends GFAddOn {
         'src'     => $this->get_base_url() . '/css/styles.css',
         'version' => $this->_version,
         'enqueue' => array(
-          array( 'field_types' => array( 'select', 'radio', 'checkbox' ) )
+          array( 'field_types' => array( 'select', 'radio', 'checkbox', 'html' ) )
         )
       )
     );
@@ -104,6 +116,26 @@ class GFEdcAddOn extends GFAddOn {
 
   // # FRONTEND FUNCTIONS --------------------------------------------------------------------------------------------
 
+  /**
+   * Filter {all_fields} merge tag.
+   *
+   * @param string $value The current merge tag value to be filtered.
+   * @param string $merge_tag The merge tag being executed.
+   * @param string $modifier The string containing any modifiers for this merge tag.
+   * @param string $field The current field.
+   *
+   * @return string
+   */
+	function filter_all_fields( $value, $merge_tag, $modifier, $field, $raw_value ) {
+    if ( $merge_tag == 'all_fields' && $field->type == 'checkbox' ) {
+			$new_array = array_filter( $raw_value );
+			$new_value = implode( ", ", $new_array );
+      return $new_value;
+    } else {
+      return $value;
+    }
+	}
+  
   /**
    * Add the text in the plugin settings to the bottom of the form if enabled for this form.
    *
@@ -185,6 +217,14 @@ class GFEdcAddOn extends GFAddOn {
             'name'              => 'mandrillPassword',
             'label'             => esc_html__( 'Mandrill SMTP Username', 'gforms-edc' ),
             'tooltip'           => esc_html__( 'Enter your Mandrill SMTP Username', 'gforms-edc' ),
+            'type'              => 'text',
+            'class'             => 'small',
+            'feedback_callback' => array( $this, 'is_valid_setting' ),
+          ),
+          array(
+            'name'              => 'mandrillAPIKey',
+            'label'             => esc_html__( 'Mandrill API Key', 'gforms-edc' ),
+            'tooltip'           => esc_html__( 'Enter your Mandrill API Key', 'gforms-edc' ),
             'type'              => 'text',
             'class'             => 'small',
             'feedback_callback' => array( $this, 'is_valid_setting' ),
@@ -281,6 +321,12 @@ class GFEdcAddOn extends GFAddOn {
         'is_default_column' => true,
         'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
     );
+    $entry_meta[ 'mandrill_status' ] = array(
+        'label' => 'Mandrill Status',
+        'is_numeric' => false,
+        'is_default_column' => false,
+        'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
+    );
     return $entry_meta;
 	}
 
@@ -328,8 +374,8 @@ class GFEdcAddOn extends GFAddOn {
   public function action_pre_submission( $form ) {
 
     // This section is used to validate any reasons for rejection, and append the data to the form
-    $rejection_status_id = $this->getFieldIDByLabel( $form, 'Status' );
-    $rejection_reason_id = $this->getFieldIDByLabel( $form, 'Rejection Reason' );
+    $rejection_status_id = $this->get_field_id_by_label( $form, 'Status' );
+    $rejection_reason_id = $this->get_field_id_by_label( $form, 'Rejection Reason' );
 
     $rejected_status = false;
     $rejected_array = array();
@@ -358,10 +404,10 @@ class GFEdcAddOn extends GFAddOn {
       	// set defaults
       	$bmi = 0;
       	// get field id's
-      	$bmi_field_id = $form[ 'gforms-edc' ][ 'bmifield' ]; // $this->getFieldIDByLabel( $form, 'BMI' );
-      	$height_field_id_ft = $form[ 'gforms-edc' ][ 'htftfield' ]; // $this->getFieldIDByLabel( $form, 'Height (feet)' );
-      	$height_field_id_in = $form[ 'gforms-edc' ][ 'htinfield' ]; // $this->getFieldIDByLabel( $form, '(inches)' );
-      	$weight_field_id = $form[ 'gforms-edc' ][ 'wtfield' ]; // $this->getFieldIDByLabel( $form, 'Weight (lbs)' );
+      	$bmi_field_id = $form[ 'gforms-edc' ][ 'bmifield' ]; // $this->get_field_id_by_label( $form, 'BMI' );
+      	$height_field_id_ft = $form[ 'gforms-edc' ][ 'htftfield' ]; // $this->get_field_id_by_label( $form, 'Height (feet)' );
+      	$height_field_id_in = $form[ 'gforms-edc' ][ 'htinfield' ]; // $this->get_field_id_by_label( $form, '(inches)' );
+      	$weight_field_id = $form[ 'gforms-edc' ][ 'wtfield' ]; // $this->get_field_id_by_label( $form, 'Weight (lbs)' );
       	// calculate height and weight and convert to metric (m and kg)
       	$height = ( ( ( ( $_POST[ 'input_' . $height_field_id_ft ] ) * 12 ) + $_POST[ 'input_' . $height_field_id_in ] ) * 0.0254 );
       	$weight = ( $_POST[ 'input_' . $weight_field_id ] * 0.453592 );
@@ -418,7 +464,7 @@ class GFEdcAddOn extends GFAddOn {
    */
   public function action_after_submission( $entry, $form ) {
 
-  	$is_duplicate = ( $this->isDuplicate( $form, $entry ) ? 'Yes' : 'No' );
+  	$is_duplicate = ( $this->is_duplicate_email( $form, $entry ) ? 'Yes' : 'No' );
 
   	gform_update_meta( $entry['id'], 'is_duplicate', $is_duplicate );
 
@@ -444,6 +490,108 @@ class GFEdcAddOn extends GFAddOn {
         // nothing...
       }
     }
+
+    // MANDRILL --------------------------------------------------------------------------------------------------
+	  try {
+	    $message = array(
+	        'html' => '<p>Example HTML content</p>',
+	        'text' => 'Example text content',
+	        'subject' => 'example subject',
+	        'from_email' => 'tim@monkishtypist.com',
+	        'from_name' => 'Example Name',
+	        'to' => array(
+	            array(
+	                'email' => 'tim@monkishtypist.com',
+	                'name' => 'Recipient Name',
+	                'type' => 'to'
+	            )
+	        ),
+	        'headers' => array('Reply-To' => 'message.reply@example.com'),
+	        'important' => false,
+	        'track_opens' => null,
+	        'track_clicks' => null,
+	        'auto_text' => null,
+	        'auto_html' => null,
+	        'inline_css' => null,
+	        'url_strip_qs' => null,
+	        'preserve_recipients' => null,
+	        'view_content_link' => null,
+	        'bcc_address' => 'message.bcc_address@example.com',
+	        'tracking_domain' => null,
+	        'signing_domain' => null,
+	        'return_path_domain' => null,
+	        'merge' => true,
+	        'merge_language' => 'mailchimp',
+	        'global_merge_vars' => array(
+	            array(
+	                'name' => 'merge1',
+	                'content' => 'merge1 content'
+	            )
+	        ),
+	        'merge_vars' => array(
+	            array(
+	                'rcpt' => 'recipient.email@example.com',
+	                'vars' => array(
+	                    array(
+	                        'name' => 'merge2',
+	                        'content' => 'merge2 content'
+	                    )
+	                )
+	            )
+	        ),
+	        'tags' => array('password-resets'),
+	        'subaccount' => 'customer-123',
+	        'google_analytics_domains' => array('example.com'),
+	        'google_analytics_campaign' => 'message.from_email@example.com',
+	        'metadata' => array('website' => 'www.example.com'),
+	        'recipient_metadata' => array(
+	            array(
+	                'rcpt' => 'recipient.email@example.com',
+	                'values' => array('user_id' => 123456)
+	            )
+	        ),
+	        'attachments' => array(
+	            array(
+	                'type' => 'text/plain',
+	                'name' => 'myfile.txt',
+	                'content' => 'ZXhhbXBsZSBmaWxl'
+	            )
+	        ),
+	        'images' => array(
+	            array(
+	                'type' => 'image/png',
+	                'name' => 'IMAGECID',
+	                'content' => 'ZXhhbXBsZSBmaWxl'
+	            )
+	        )
+	    );
+	    $async = false;
+	    $ip_pool = 'Main Pool';
+	    $send_at = gmdate( "Y-m-d H:i:s", time() );
+	    $result = $this->_mandrill->messages->send($message, $async, $ip_pool, $send_at);
+	    print_r($result);
+	    /*
+	    Array
+	    (
+	        [0] => Array
+	            (
+	                [email] => recipient.email@example.com
+	                [status] => sent
+	                [reject_reason] => hard-bounce
+	                [_id] => abc123abc123abc123abc123abc123
+	            )
+	    
+	    )
+	    */
+	    gform_update_meta( $entry['id'], 'mandrill_status', $result[0]['status'] );
+
+		} catch(Mandrill_Error $e) {
+		    // Mandrill errors are thrown as exceptions
+		    echo 'A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage();
+		    // A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
+		    throw $e;
+		}
+
   }
 
 
@@ -659,7 +807,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @return array
    */
-  public function getFieldIDByType( $form, $type, $use_input_type = false ) {
+  public function get_field_id_by_type( $form, $type, $use_input_type = false ) {
     if ( is_array( $type ) ) {
       $type = $type[0];
     }
@@ -678,7 +826,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @return bool
    */
-  public function getFieldIDByLabel( $form, $label ) {
+  public function get_field_id_by_label( $form, $label ) {
     $fields = array();
     foreach( $form[ 'fields' ] as $field ) {
       if ( $field->label == $label )
@@ -698,7 +846,7 @@ class GFEdcAddOn extends GFAddOn {
    *
    * @return array
    */
-  public function getEntries( $form, $key, $value ) {
+  public function get_entries_by_key( $form, $key, $value ) {
 
     $search_criteria = array(
 	    'status'        => 'active',
@@ -718,10 +866,10 @@ class GFEdcAddOn extends GFAddOn {
     return $entries;
   }
 
-  public function isDuplicate( $form, $entry ) {
+  public function is_duplicate_email( $form, $entry ) {
   	$fields = GFAPI::get_fields_by_type( $form, array( 'email' ), true );
   	if ( ! empty( $fields ) ) {
-	  	$entries = $this->getEntries( $form, $fields[0]->id, $entry[ $fields[0]->id ] );
+	  	$entries = $this->get_entries_by_key( $form, $fields[0]->id, $entry[ $fields[0]->id ] );
 			if ( ! empty( $entries ) && count( $entries ) > 1 ) {
 				return true;
 			}
@@ -729,5 +877,9 @@ class GFEdcAddOn extends GFAddOn {
 		}
 		return array( 'Error' => 'no email field' );
   }
+
+
+
+
 
 }
