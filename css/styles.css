@@ -56,6 +56,7 @@ body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul
 
 
 /* Buttons */
+.gform_wrapper .button.gform_button.btn-continue,
 .gform_wrapper .gform_page_footer .button.gform_button, 
 .gform_wrapper .gform_page_footer .button.gform_next_button, 
 .gform_wrapper .gform_page_footer .button.gform_previous_button {

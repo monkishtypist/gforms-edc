@@ -47,6 +47,8 @@ class GFEdcAddOn extends GFAddOn {
     add_filter( 'gform_tooltips', array( $this, 'filter_tooltips' ), 10, 1 );
     add_filter( 'gform_merge_tag_filter', array( $this, 'filter_all_fields' ), 10, 5 );
     add_filter( 'gform_confirmation', array( $this, 'filter_custom_confirmation' ), 10, 4 );
+    add_filter( 'gform_confirmation_anchor', function() { return 0; } );
+    add_filter( 'gform_pre_render', array( $this, 'filter_pre_render') );
 
     add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
     add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
@@ -89,8 +91,7 @@ class GFEdcAddOn extends GFAddOn {
             'tab'        => 'gforms-edc'
           )
         )
-      ),
-
+      )
     );
 
     return array_merge( parent::scripts(), $scripts );
@@ -117,6 +118,25 @@ class GFEdcAddOn extends GFAddOn {
   }
 
   // # FILTER FUNCTIONS --------------------------------------------------------------------------------------------
+
+  /**
+   * Performing a custom action at form render.
+   *
+   */
+  public function filter_pre_render( $form ) {
+
+  	if ( ! $this->edc_active( $form ) ) return $form;
+
+  	?>
+  	<script type="text/javascript">
+  		jQuery(document).bind('gform_page_loaded', function(event, form_id, current_page) {
+  			jQuery(document).scrollTop(0);
+  		});
+  	</script>
+  	<?php
+
+  	return $form;
+  }
 
   /**
    * Filter {all_fields} merge tag.
@@ -163,6 +183,9 @@ class GFEdcAddOn extends GFAddOn {
    *
    */
   public function filter_custom_confirmation( $confirmation, $form, $entry, $ajax ) {
+
+  	if ( ! $this->edc_active( $form ) ) return $confirmation;
+
   	$is_duplicate = $this->is_duplicate_email( $form, $entry );
   	$approved = $this->get_approval_status( $entry, $form );
 
@@ -185,7 +208,7 @@ class GFEdcAddOn extends GFAddOn {
 					 	<li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don’t do this, we won\'t receive notification of your submission.</li>
 					</ul>
 				</p>
-				<a class="btn button gform_button" href="www.givfdonor.com">CONTINUE</a>
+				<p class="text-center"><a class="btn button gform_button btn-continue" href="www.givfdonor.com" style="background-color:#4F156C;border:1px solid #4F156C;border-radius:0;color:#fff;font-size:16px;margin-bottom:1rem;padding:1rem 2rem;">CONTINUE</a></p>
 				<p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100.  Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p>
 				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you\'ll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you\'ll be entered 1 time into our raffle. <b>Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification.</b> If you win, we will contact you via e-mail.</p>
 				<p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p>
@@ -199,6 +222,8 @@ class GFEdcAddOn extends GFAddOn {
 				<p>We greatly appreciate your interest in our program and wish you all the best.</p>
 				<p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>';
 		}
+
+		$confirmation = sprintf('<div class="gform_wrapper">%s</div>', $confirmation);
 
 		return $confirmation;
 
@@ -218,8 +243,6 @@ class GFEdcAddOn extends GFAddOn {
     
     echo '<h3><a href="' . admin_url( 'admin.php?page=gf_edit_forms' ) . '">Form Fields</a></h3>';
     echo '<p>The following form fields are required to handle certain logic, and must be added by the administrator.</p>';
-    echo '<p><b>Status</b> (<i>hidden</i>) - this field shall display `Approved` or `Rejected` based on the rejection parameters for each field. This is a hidden field type with the label `Status`.</p>';
-    echo '<p><b>Rejection Reason</b> (<i>hidden</i>) - this field shall display a text string representing all the fields that qualified as "rejected" based on the field\'s rejection parameters. This is a hidden field type with the label `Rejection Reason`.</p>';
     echo '<p><b>BMI</b> (<i>hidden</i>) - this field shall display the calculated BMI in the admin area. This is a hidden field type with the label `BMI`.</p>';
     echo '<p><b>Height</b> (<i>dropdown | number</i>) - two fields, these fields shall be used to indicate the user\'s height, one field for feet and the other inches. The information must be stored as numbers.</p>';
     echo '<p><b>Weight</b> (<i>number</i>) - this field shall be used to determine the user\'s wieght in pounds.</p>';
@@ -230,11 +253,13 @@ class GFEdcAddOn extends GFAddOn {
     echo '<p>After creating your form, you must update the form settings to match your custom fields. On the form settings page you must associate height, weight, and BMI parameters to the appropriate fields.';
 
     echo '<h2>Additional Requirements</h2>';
-    echo '<p>The following additional add-ons are required for complete functioanl requirements for EDC Application Form:</p>';
+    echo '<p>The following additional add-ons are required for complete functional requirements for EDC Application Form:</p>';
     echo '<ol><li><b>Gravity Forms</b> with developer\'s license</li>';
     echo '<li><b>Partial Entries Add-on</b> for storing each step of the form within GForms entries.</li>';
     echo '<li><b>MailChimp Add-on</b> for adding applicants to various lead lists.</li>';
     echo '<li><b>Gravity Perks</b> plugin with <i>GP PReview Submission</i> perk for displaying the submission preview page in the last step.</li>';
+    echo '<li><b>AJAX set to TRUE</b> in order to render form paging correctly.</li>';
+    echo '</ol>';
   }
 
   /**
@@ -309,7 +334,7 @@ class GFEdcAddOn extends GFAddOn {
           array(
             'label'   => esc_html__( 'Enable EDC Custom Logic', 'gforms-edc' ),
             'type'    => 'checkbox',
-            'name'    => 'enabled',
+            'name'    => 'edc_enabled',
             'tooltip' => esc_html__( 'Should this form include rejection logic and associated trigger actions?', 'gforms-edc' ),
             'choices' => array(
               array(
@@ -360,6 +385,7 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $form_id The ID of the form from which the entry value was submitted.
    */
   public function filter_entry_meta( $entry_meta, $form_id ) {
+
     $entry_meta[ 'edc_is_duplicate' ] = array(
         'label' => 'Duplicate',
         'is_numeric' => true,
@@ -441,6 +467,8 @@ class GFEdcAddOn extends GFAddOn {
    */
   public function action_entry_created( $entry, $form ) {
 
+  	if ( ! $this->edc_active( $form ) ) return;
+
   	$is_duplicate = $this->update_is_duplicate_email( $entry, $form );
 
   	$approval_status = $this->update_approval_status( $entry, $form );
@@ -453,6 +481,8 @@ class GFEdcAddOn extends GFAddOn {
    * @param array $form The form currently being processed.
    */
   public function action_after_submission( $entry, $form ) {
+
+  	if ( ! $this->edc_active( $form ) ) return;
 
   	$name_field_id = $this->get_field_id_by_type( $form, 'name' );
   	$name_first = $entry[ $name_field_id . '.3' ];
@@ -698,6 +728,7 @@ class GFEdcAddOn extends GFAddOn {
    * @param int $position The current property position.
    */
   public function action_field_advanced_settings( $position ) {
+
     // Replace 150 with whatever position you want.
     if ( 150 !== $position ) {
       return;
@@ -758,6 +789,18 @@ class GFEdcAddOn extends GFAddOn {
 
 
   // # HELPERS -------------------------------------------------------------------------------------------------------
+
+  /**
+   * Is EDC active on form?
+   *
+   * @param obj $form The form object.
+   */
+  public function edc_active( $form ) {
+  	if ( $form[ 'gforms-edc' ][ 'rejectionLogic' ] ) {
+  		return true;
+  	}
+  	return false;
+  }
 
   /**
    * Update approval status and rejection reasons if any
@@ -1057,34 +1100,35 @@ class GFEdcAddOn extends GFAddOn {
 
   public function get_mandrill_html( $entry, $form, $approved = true ) {
 
+  	$is_duplicate = $this->is_duplicate_email( $form, $entry );
+  	$approved = $this->get_approval_status( $entry, $form );
+
   	$name_field_id = $this->get_field_id_by_type( $form, 'name' );
   	$name_first = $entry[ $name_field_id . '.3' ];
 
-  	if ( $approved ) {
-			$html = "<p>Hello {$name_first}!</p>
+  	if ( $is_duplicate ) {
+  		$html = '<p>Hello ' . $name_first . ',</p><p>Thank you for taking the time to submit an online application for our donor egg program. It appears you have previously submitted an application. Therefore we are unable to accept your online application at this time.</p><p>If your answers to the application questionnaire have changed, please contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a> and we can assist you with updating your application.</p><p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>';
+  	} elseif ( $approved ) {
+			$html = '<p>Hello ' . $name_first . '!</p>
 				<p><b>Congratulations! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</b></p>
-				<p>So what's next? The full long-form application. We admit... it's called \"long\" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
-				<p><b>WHAT YOU'LL NEED TO DO:</b><ul><li>Save this e-mail! It will be critical as a checklist.</li><li>If you haven't already, visit <a href=\"www.givfdonor.com\">www.givfdonor.com</a> and register to start the application.</li><li>Fill out the \"profile\" and \"medical\" section. DON'T WORRY about completing the \"personal summary\" or the \"essay summary\" — this will be completed later in the process.</li><li>When you're done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don't do this, we won't receive notification of your submission.</li></ul></p>
+				<p>So what\'s next? The full long-form application. We admit... it\'s called "long" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
+				<p><b>WHAT YOU\'LL NEED TO DO:</b><ul><li>Save this e-mail! It will be critical as a checklist.</li><li>If you haven\'t already, visit <a href="www.givfdonor.com">www.givfdonor.com</a> and register to start the application.</li><li>Fill out the "profile" and "medical" section. DON\'T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li><li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don\'t do this, we won\'t receive notification of your submission.</li></ul></p>
 				<p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100. Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p>
-				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you'll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you'll be entered 1 time into our raffle. Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification. If you win, we will contact you via e-mail.</p>
+				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you\'ll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you\'ll be entered 1 time into our raffle. Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification. If you win, we will contact you via e-mail.</p>
 				<p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p>
-				<p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you're making to become a donor. If you have any questions or concerns, don't hesitate to contact us at <a href=\"mailto:donor@fairfaxeggbank.com\">donor@fairfaxeggbank.com</a>.</p>
+				<p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you\'re making to become a donor. If you have any questions or concerns, don\'t hesitate to contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a>.</p>
 				<hr />
-				<p><b>Checklist of to do's:</b><br />
+				<p><b>Checklist of to do\'s:</b><br />
 					[ ] Set your target date for completing the application. Mark it on your calendar.<br />
-					[ ] Gather documentation of your and your family's medical history.<br />
+					[ ] Gather documentation of your and your family\'s medical history.<br />
 					[ ] Register at www.givfdonor.com to start the application.<br />
-					[ ] Fill out the \"profile\" and \"medical\" sections of the application.<br />
-					[ ] Re-check every question once you've completed the application.<br />
+					[ ] Fill out the "profile" and "medical" sections of the application.<br />
+					[ ] Re-check every question once you\'ve completed the application.<br />
 					[ ] Complete the electronic signature.<br />
 					[ ] Click SUBMIT.</p>
-				<p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>";
+				<p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>';
 		} else {
-			$html = "<p>Hello {$name_first}!</p>
-				<p>Thank you for taking the time to submit an online application for our donor egg program. We regret to inform you that we are unable to accept you into our egg donation program based on the information provided.</p>
-				<p>Many factors are involved in our eligibility determination such as requirements put forth by the FDA, clinical geneticists and our medical directors. Unfortunately we are unable to disclose the specific reasons why an applicant may not be eligible, however our basic requirements can be found on our website at <a href=\"http://www.eggdonorcentral.com/egg-donor-requirements\">http://www.eggdonorcentral.com/egg-donor-requirements</a> for your reference. You may also find our FAQ section to be helpful at <a href=\"https://www.eggdonorcentral.com/faqs\">https://www.eggdonorcentral.com/faqs</a>.</p>
-				<p>We greatly appreciate your interest in our program and wish you all the best.</p>
-				<p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>";
+			$html = '<p>Hello ' . $name_first . '!</p><p>Thank you for taking the time to submit an online application for our donor egg program. We regret to inform you that we are unable to accept you into our egg donation program based on the information provided.</p><p>Many factors are involved in our eligibility determination such as requirements put forth by the FDA, clinical geneticists and our medical directors. Unfortunately we are unable to disclose the specific reasons why an applicant may not be eligible, however our basic requirements can be found on our website at <a href="http://www.eggdonorcentral.com/egg-donor-requirements">http://www.eggdonorcentral.com/egg-donor-requirements</a> for your reference. You may also find our FAQ section to be helpful at <a href="https://www.eggdonorcentral.com/faqs">https://www.eggdonorcentral.com/faqs</a>.</p><p>We greatly appreciate your interest in our program and wish you all the best.</p><p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>';
 		}
 
 		return $html;
