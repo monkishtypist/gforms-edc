@@ -201,10 +201,10 @@ class GFEdcAddOn extends GFAddOn {
   	} elseif ( $approved ) {
 			$confirmation = '<h1>Congratulations ' . $name_first . '! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</h1>
 				<p>So what\'s next? The full long-form application. We admit... it\'s called "long" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
-				<p><b>WHAT YOU’LL NEED TO DO:</b>
+				<p><b>WHAT YOU\'LL NEED TO DO:</b>
 					<ul>
 					 	<li>Click on the CONTINUE button below and register to start the application.</li>
-					 	<li>Fill out the "profile" and "medical" section. DON’T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li>
+					 	<li>Fill out the "profile" and "medical" section. DON\'T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li>
 					 	<li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don’t do this, we won\'t receive notification of your submission.</li>
 					</ul>
 				</p>
@@ -276,6 +276,14 @@ class GFEdcAddOn extends GFAddOn {
             'name'              => 'mailchimpApiKey',
             'label'             => esc_html__( 'MailChimp API Key', 'gforms-edc' ),
             'tooltip'           => esc_html__( 'Enter your MailChimp API key', 'gforms-edc' ),
+            'type'              => 'text',
+            'class'             => 'small',
+            'feedback_callback' => array( $this, 'is_valid_setting' ),
+          ),
+          array(
+            'name'              => 'mandrillEmail',
+            'label'             => esc_html__( 'Mandrill "From" Email', 'gforms-edc' ),
+            'tooltip'           => esc_html__( 'The return email address from which Mandrill emails shall be sent', 'gforms-edc' ),
             'type'              => 'text',
             'class'             => 'small',
             'feedback_callback' => array( $this, 'is_valid_setting' ),
@@ -493,6 +501,13 @@ class GFEdcAddOn extends GFAddOn {
 
   	$site = get_site_url();
   	$parsed_site = parse_url( $site );
+
+    if ( $this->get_plugin_setting('mandrillEmail') ) {
+      $mandrill_email = $this->get_plugin_setting('mandrillEmail');
+    } else {
+      $mandrill_email = null;
+    }
+
     // $arr = array();
 
     /*foreach ($form['fields'] as $field) {
@@ -520,9 +535,9 @@ class GFEdcAddOn extends GFAddOn {
 	  try {
 	    $message = array(
 	        'html' => $this->get_mandrill_html( $entry, $form ),
-	        'text' => 'Example text content',
+	        'text' => '',
 	        'subject' => 'Thank you for applying with Egg Donor Central',
-	        'from_email' => 'donor@fairfaxeggbank.com',
+	        'from_email' => $mandrill_email,
 	        'from_name' => 'Fairfax Egg Bank',
 	        'to' => array(
 	            array(
@@ -531,7 +546,7 @@ class GFEdcAddOn extends GFAddOn {
 	                'type' => 'to'
 	            )
 	        ),
-	        'headers' => array('Reply-To' => 'donor@fairfaxeggbank.com'),
+	        'headers' => array('Reply-To' => $mandrill_email),
 	        'important' => false,
 	        'track_opens' => true,
 	        'track_clicks' => true,
@@ -556,7 +571,7 @@ class GFEdcAddOn extends GFAddOn {
 	        'tags' => array('application', $this->bool_to_approve_reject( $this->get_approval_status( $entry, $form ) ) ),
 	        // 'subaccount' => 'customer-123',
 	        'google_analytics_domains' => array( $parsed_site['host'] ),
-	        'google_analytics_campaign' => 'donor@fairfaxeggbank.com',
+	        'google_analytics_campaign' => $mandrill_email,
 	        'metadata' => array('website' => get_site_url() ),
 	        'recipient_metadata' => array(
 	            array(
@@ -1109,24 +1124,7 @@ class GFEdcAddOn extends GFAddOn {
   	if ( $is_duplicate ) {
   		$html = '<p>Hello ' . $name_first . ',</p><p>Thank you for taking the time to submit an online application for our donor egg program. It appears you have previously submitted an application. Therefore we are unable to accept your online application at this time.</p><p>If your answers to the application questionnaire have changed, please contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a> and we can assist you with updating your application.</p><p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>';
   	} elseif ( $approved ) {
-			$html = '<p>Hello ' . $name_first . '!</p>
-				<p><b>Congratulations! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</b></p>
-				<p>So what\'s next? The full long-form application. We admit... it\'s called "long" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p>
-				<p><b>WHAT YOU\'LL NEED TO DO:</b><ul><li>Save this e-mail! It will be critical as a checklist.</li><li>If you haven\'t already, visit <a href="www.givfdonor.com">www.givfdonor.com</a> and register to start the application.</li><li>Fill out the "profile" and "medical" section. DON\'T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li><li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don\'t do this, we won\'t receive notification of your submission.</li></ul></p>
-				<p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100. Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p>
-				<p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you\'ll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you\'ll be entered 1 time into our raffle. Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification. If you win, we will contact you via e-mail.</p>
-				<p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p>
-				<p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you\'re making to become a donor. If you have any questions or concerns, don\'t hesitate to contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a>.</p>
-				<hr />
-				<p><b>Checklist of to do\'s:</b><br />
-					[ ] Set your target date for completing the application. Mark it on your calendar.<br />
-					[ ] Gather documentation of your and your family\'s medical history.<br />
-					[ ] Register at www.givfdonor.com to start the application.<br />
-					[ ] Fill out the "profile" and "medical" sections of the application.<br />
-					[ ] Re-check every question once you\'ve completed the application.<br />
-					[ ] Complete the electronic signature.<br />
-					[ ] Click SUBMIT.</p>
-				<p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>';
+			$html = '<p>Hello ' . $name_first . '!</p><p><b>Congratulations! Give yourself a pat on the back — less than 39% pass the initial screening of the egg donor process but you did!</b></p><p>So what\'s next? The full long-form application. We admit... it\'s called "long" for a reason. But every question is critical to ensure we have an accurate understanding of your health and any associated risks in becoming a donor.</p><p><b>WHAT YOU\'LL NEED TO DO:</b><ul><li>Save this e-mail! It will be critical as a checklist.</li><li>If you haven\'t already, visit <a href="www.givfdonor.com">www.givfdonor.com</a> and register to start the application.</li><li>Fill out the "profile" and "medical" section. DON\'T WORRY about completing the "personal summary" or the "essay summary" — this will be completed later in the process.</li><li>When you\'re done, recheck your answers, complete the electronic signature, and click on SUBMIT in the medical summary section. If you don\'t do this, we won\'t receive notification of your submission.</li></ul></p><p><b>WHEN THE APP IS DUE:</b> You have 14 days to complete your application in order to be entered into a drawing to win an extra $100. Please make sure to contact us if you get locked out of your account for any reason. (You may continue to apply past the 14 days, however you will not be eligible for the drawing)</p><p><b>HOW TO WIN AN EXTRA $100:</b> Each month, we hold a drawing for a $100 gift certificate. If you finish the application more than 7 days ahead of deadline, you\'ll be entered 3 times into our raffle. Otherwise, if you finish within the deadline, you\'ll be entered 1 time into our raffle. Make sure to be thorough — incomplete and/or inaccurate answers will lead to disqualification. If you win, we will contact you via e-mail.</p><p><b>WHAT COMES NEXT:</b> Once you have submitted your form, our Clinical Geneticist will begin the review process. We will be in touch within a couple of weeks to advise whether you will move forward in the egg donation process or not.</p><p>So mark your calendar to keep the deadline in sight! We deeply thank you for the commitment you\'re making to become a donor. If you have any questions or concerns, don\'t hesitate to contact us at <a href="mailto:donor@fairfaxeggbank.com">donor@fairfaxeggbank.com</a>.</p><hr /><p><b>Checklist of to do\'s:</b><br />[ ] Set your target date for completing the application. Mark it on your calendar.<br/>[ ] Gather documentation of your and your family\'s medical history.<br />[ ] Register at www.givfdonor.com to start the application.<br />[ ] Fill out the "profile" and "medical" sections of the application.<br />[ ] Re-check every question once you\'ve completed the application.<br />[ ] Complete the electronic signature.<br />[ ] Click SUBMIT.</p><p>Sincerely,<br /><b>The Fairfax EggBank Donor Egg Team</b></p>';
 		} else {
 			$html = '<p>Hello ' . $name_first . '!</p><p>Thank you for taking the time to submit an online application for our donor egg program. We regret to inform you that we are unable to accept you into our egg donation program based on the information provided.</p><p>Many factors are involved in our eligibility determination such as requirements put forth by the FDA, clinical geneticists and our medical directors. Unfortunately we are unable to disclose the specific reasons why an applicant may not be eligible, however our basic requirements can be found on our website at <a href="http://www.eggdonorcentral.com/egg-donor-requirements">http://www.eggdonorcentral.com/egg-donor-requirements</a> for your reference. You may also find our FAQ section to be helpful at <a href="https://www.eggdonorcentral.com/faqs">https://www.eggdonorcentral.com/faqs</a>.</p><p>We greatly appreciate your interest in our program and wish you all the best.</p><p>Sincerely,<br /><b>The Fairfax EggBank Team</b></p>';
 		}
