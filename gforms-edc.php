@@ -49,3 +49,34 @@ class GF_EDC_AddOn_Bootstrap {
 function gf_edc_addon() {
     return GFEdcAddOn::get_instance();
 }
+
+
+/**
+ * Add all Gravity Forms capabilities to Editor role.
+ * Runs during plugin activation.
+ * 
+ * @access public
+ * @return void
+ */
+function activate_gforms_edc() {
+  
+  $role = get_role( 'editor' );
+  $role->add_cap( 'gform_full_access' );
+}
+// Register our activation hook
+register_activation_hook( __FILE__, 'activate_gforms_edc' );
+
+/**
+ * Remove Gravity Forms capabilities from Editor role.
+ * Runs during plugin deactivation.
+ * 
+ * @access public
+ * @return void
+ */
+function deactivate_gforms_edc() {
+ 
+ $role = get_role( 'editor' );
+ $role->remove_cap( 'gform_full_access' );
+}
+// Register our de-activation hook
+register_deactivation_hook( __FILE__, 'deactivate_gforms_edc' );
