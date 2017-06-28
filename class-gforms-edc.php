@@ -995,17 +995,28 @@ class GFEdcAddOn extends GFAddOn {
    */
   public function is_post_duplicate_email( $post, $form ) {
 
-    $partial_entries = ( isset( $_POST['partial_entry_id'] ) ? true : false );
   	$fields = GFAPI::get_fields_by_type( $form, array( 'email' ), true );
-  	$count = ( $partial_entries ? 1 : 0 );
-  	if ( ! empty( $fields ) ) {
-	  	$entries = $this->get_entries_by_key( $form, $fields[0]->id, $post[ 'input_' . $fields[0]->id ] );
-			if ( ! empty( $entries ) && count( $entries ) > $count ) {
-				return true;
-			}
-			return false;
-		}
-		return null;
+  	
+    if ( ! empty( $fields ) ):
+	  	
+      $entries = $this->get_entries_by_key( $form, $fields[0]->id, $post[ 'input_' . $fields[0]->id ] );
+      
+      if ( count( $entries ) > 0 ) {
+        foreach ($entries as $entry) {
+          if ( ! isset( $entry['partial_entry_id'] ) || ( isset( $entry['partial_entry_id'] ) && $entry['partial_entry_id'] == false ) ) {
+            return true; 
+          }
+        }
+			} else {
+  			return false;
+      }
+    
+    else:
+
+      return false;
+    
+    endif;
+    
   }
 
   /**
