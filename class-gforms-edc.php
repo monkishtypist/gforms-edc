@@ -238,20 +238,6 @@ class GFEdcAddOn extends GFAddOn {
 
 		$approval_status = $this->update_approval_status( $_POST, $form, true );
 
-    $result_string = ( $is_duplicate ? 'Duplicate' : ( $approval_status ? 'Approved' : 'Rejected' ) );
-
-    ?>
-    <script type="text/javascript">
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      'application_status':'<?php echo $result_string; ?>'
-    });
-    <?php foreach ($_POST as $key => $value) { ?>
-      window.dataLayer.push({ "{$key}": "{$value}" });
-    <?php } ?>
-    console.log( window.dataLayer );
-    </script>
-    <?php
 	}
 
 	/**
@@ -298,6 +284,18 @@ class GFEdcAddOn extends GFAddOn {
 				$mandrill_template = $this->get_plugin_setting('mandrillApprovedTemplate');
 				break;
 		}
+
+		?>
+		<script type="text/javascript">
+			window.dataLayer = window.dataLayer || [];
+			window.dataLayer.push({
+				'application_status':'<?php echo $status; ?>'
+			});
+			<?php foreach ($entry as $key => $value) { ?>
+				window.dataLayer.push({ "<?php echo $key; ?>": "<?php echo $value; ?>" });
+			<?php } ?>
+		</script>
+		<?php
 
 		if ( empty( $mandrill_template ) )
 			return;
