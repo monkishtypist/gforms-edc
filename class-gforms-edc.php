@@ -44,7 +44,7 @@ class GFEdcAddOn extends GFAddOn {
 		add_filter( 'gform_entry_meta', array( $this, 'filter_entry_meta' ), 10, 2);
 		add_filter( 'gform_tooltips', array( $this, 'filter_tooltips' ), 10, 1 );
 		add_filter( 'gform_merge_tag_filter', array( $this, 'filter_all_fields' ), 10, 5 );
-		add_filter( 'gform_confirmation_anchor', function() { return 0; } );
+		add_filter( 'gform_confirmation_anchor', create_function( "","return false;" ) );
 		// add_filter( 'gform_pre_render', array( $this, 'filter_pre_render') );
 		add_filter( 'gform_submit_button', array( $this, 'filter_form_submit_button' ), 10, 2 );
 
