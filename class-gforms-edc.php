@@ -46,7 +46,7 @@ class GFEdcAddOn extends GFAddOn {
 		add_filter( 'gform_merge_tag_filter', array( $this, 'filter_all_fields' ), 10, 5 );
 		add_filter( 'gform_confirmation_anchor', create_function( "","return false;" ) );
 		// add_filter( 'gform_pre_render', array( $this, 'filter_pre_render') );
-		add_filter( 'gform_submit_button', array( $this, 'filter_form_submit_button' ), 10, 2 );
+		// add_filter( 'gform_submit_button', array( $this, 'filter_form_submit_button' ), 10, 2 );
 
 		add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
 		add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
@@ -114,7 +114,6 @@ class GFEdcAddOn extends GFAddOn {
 	 * @param array $form_id The ID of the form from which the entry value was submitted.
 	 */
 	public function filter_entry_meta( $entry_meta, $form_id ) {
-
 		$entry_meta[ 'edc_mandrill_status' ] = array(
 				'label' => 'Mandrill Status',
 				'is_numeric' => false,
@@ -624,6 +623,9 @@ class GFEdcAddOn extends GFAddOn {
 	 * Custom javascript
 	 */
 	public function action_enqueue_scripts( $form, $is_ajax ) {
+
+		if ( ! $this->edc_active( $form ) ) return false;
+
 		wp_enqueue_script( 'gform_script', plugin_dir_url( __FILE__ ) . '/js/scripts.js' );
 	}
 
@@ -635,7 +637,7 @@ class GFEdcAddOn extends GFAddOn {
 	 * @param obj $form The form object.
 	 */
 	public function edc_active( $form ) {
-		if ( $form[ 'gforms-edc' ][ 'rejectionLogic' ] ) {
+		if ( isset($form[ 'gforms-edc' ][ 'rejectionLogic' ]) && $form[ 'gforms-edc' ][ 'rejectionLogic' ] ) {
 			return true;
 		}
 		return false;
@@ -698,7 +700,7 @@ class GFEdcAddOn extends GFAddOn {
 			}
 			
 			// BMI comparison
-			if ( $field_id == $form[ 'gforms-edc' ][ 'bmifield' ] ) {
+			if ( isset($form[ 'gforms-edc' ][ 'bmifield' ] ) && isset($form[ 'gforms-edc' ][ 'htftfield' ]) && isset($form[ 'gforms-edc' ][ 'htinfield' ]) && isset($form[ 'gforms-edc' ][ 'wtfield' ]) && $field_id == $form[ 'gforms-edc' ][ 'bmifield' ] ) {
 				// set defaults
 				$bmi = 0;
 				// get field id's
@@ -731,7 +733,7 @@ class GFEdcAddOn extends GFAddOn {
 			
 			// all other standard fields
 			if ( isset( $field->rejectVal ) ) {
-				$reject_val_arr = explode( ',', $field->rejectVal );
+				$reject_val_arr = array_map( 'trim', explode( ',', $field->rejectVal ) );
 				if ( isset( $entry[ $post_input . $field_id ] ) && in_array( $entry[ $post_input . $field_id ], $reject_val_arr ) ) {
 					$rejected_array[ $field->label ] = $entry[ $post_input . $field_id ];
 				}
