@@ -228,11 +228,13 @@ class GFEdcAddOn extends GFAddOn {
 
 		if ( ! $this->edc_active( $form ) ) return;
 
-		$is_duplicate = $this->is_post_duplicate_email( $_POST, $form );
+		$duplicate = $this->is_post_duplicate_email( $_POST, $form );
 
-		if ( $is_duplicate ) {
+		if ( $duplicate['is_duplicate'] ) {
 			$result_field_id = $this->get_field_id_by_label( $form, 'result' );
-			$_POST[ 'input_' . $result_field_id ] = 'Duplicate';
+			$duplicate_field_id = $this->get_field_id_by_label( $form, 'duplicate' );
+			$_POST[ 'input_' . $result_field_id ] = $duplicate['duplicate_status'];
+			$_POST[ 'input_' . $duplicate_field_id ] = 'Duplicate';
 		}
 
 		$approval_status = $this->update_approval_status( $_POST, $form, true );
@@ -661,15 +663,13 @@ class GFEdcAddOn extends GFAddOn {
 		// custom form fields we will be updating
 		$result_field_id = $this->get_field_id_by_label( $form, 'result' );
 		$reason_field_id = $this->get_field_id_by_label( $form, 'reason' );
+		$duplicate_field_id = $this->get_field_id_by_label( $form, 'duplicate' );
 
 		$result = $entry[ $post_input . $result_field_id ];
 
+		// set default approval status
 		if ( $result == 'Approved' || empty( $result ) ) {
 			$approved = true;
-		}
-		elseif ( $result == 'Duplicate' ) {
-			$approved = false;
-			$rejected_reason_string = "Duplicate email; ";
 		}
 		else {
 			$approved = false;
@@ -760,7 +760,7 @@ class GFEdcAddOn extends GFAddOn {
 		if ( $update_entry ) :
 			// Finally, set form values to reflect rejections
 			if ( $is_post ) {
-				$_POST[ $post_input . $result_field_id ] = ( $result == 'Duplicate' ? $result : $this->bool_to_approve_reject( $approved ) ); // set result
+				$_POST[ $post_input . $result_field_id ] = $this->bool_to_approve_reject( $approved ); // set result
 				$_POST[ $post_input . $reason_field_id ] = $rejected_reason_string; // set reason
 			}
 			else {
@@ -815,7 +815,7 @@ class GFEdcAddOn extends GFAddOn {
 	public function get_field_id_by_label( $form, $label ) {
 		$fields = array();
 		foreach( $form[ 'fields' ] as $field ) {
-			if ( $field->label == $label )
+			if ( $field->label == $label || $field->label == ucwords($label) )
 				$fields[] = $field;
 		}
 		if ( ! empty( $fields ) ) {
@@ -889,22 +889,27 @@ class GFEdcAddOn extends GFAddOn {
 		if ( ! empty( $fields ) ):
 			
 			$entries = $this->get_entries_by_key( $form, $fields[0]->id, $post[ 'input_' . $fields[0]->id ] );
-			
+			$result_field_id = $this->get_field_id_by_label( $form, 'result' );
+
+			$result = array('is_duplicate' => false, 'duplicate_status' => null);
+
 			if ( count( $entries ) > 0 ) {
+				// one or more pre-existing entries?
 				foreach ($entries as $entry) {
-					if ( ! isset( $entry['partial_entry_id'] ) || ( isset( $entry['partial_entry_id'] ) && $entry['partial_entry_id'] == false ) ) {
-						return true; 
+					if ( ! isset( $entry['partial_entry_percent'] ) || empty( $entry['partial_entry_percent'] ) ) {
+						// exists completed entries
+						$result['is_duplicate'] = true;
+					}
+					if ( isset( $entry[ $result_field_id ] ) && $entry[ $result_field_id ] == 'Rejected' ) {
+						// get status of duplicates
+						$result['duplicate_status'] = 'Rejected';
 					}
 				}
-			} else {
-				return false;
 			}
 		
-		else:
-
-			return false;
-		
 		endif;
+
+		return $result;
 		
 	}
 
