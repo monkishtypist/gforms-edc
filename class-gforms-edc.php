@@ -260,32 +260,39 @@ class GFEdcAddOn extends GFAddOn {
 
 		if ( ! $this->edc_active( $form ) ) return;
 
+		// get Mandrill settings from plugin settings
 		if ( $this->get_plugin_setting('mandrillAPIKey') ) {
 			$this->_mandrill_api_key = $this->get_plugin_setting('mandrillAPIKey');
 			$this->_mandrill = new Mandrill( $this->_mandrill_api_key );
-		}
-		else {
+		} else {
 			return;
 		}
 
+		// defaults
+		$trigger_email = false;
+		$mandrill_template = false;
+
+		// determin status of entry
 		$status_field_id = $this->get_field_id_by_label( $form, 'result' );
 		$status = ( $status_field_id >= 0 ? $entry[ $status_field_id ] : false );
+		
+		$is_duplicate = ( $duplicate_field_id >= 0 ? $entry[ $duplicate_field_id ] : NULL );
+		$duplicate_field_id = $this->get_field_id_by_label( $form, 'duplicate' );
 
+		// assign the appropriate Mandrill email template
 		switch ($status) {
 			case 'Rejected':
 				$mandrill_template = $this->get_plugin_setting('mandrillRejectedTemplate');
+				$trigger_email = true;
 				break;
-			
-			case 'Duplicate':
-				$mandrill_template = $this->get_plugin_setting('mandrillDuplicateTemplate');
-				break;
-			
 			case 'Approved':
 			default:
 				$mandrill_template = $this->get_plugin_setting('mandrillApprovedTemplate');
+				$trigger_email = ( empty( $is_duplicate ) ? false : true ); // only send Mandrill Approved on duplicate approved entries.
 				break;
 		}
 
+		// add status to the dataLayer for GTM
 		?>
 		<script type="text/javascript">
 			window.dataLayer = window.dataLayer || [];
@@ -298,9 +305,7 @@ class GFEdcAddOn extends GFAddOn {
 		</script>
 		<?php
 
-		if ( empty( $mandrill_template ) )
-			return;
-
+		// get all the necessary field values
 		$name_field_id = $this->get_field_id_by_type( $form, 'name' );
 		$name_first = $entry[ $name_field_id . '.3' ];
 		$name_last = $entry[ $name_field_id . '.6' ];
@@ -313,7 +318,8 @@ class GFEdcAddOn extends GFAddOn {
 		$site = get_site_url();
 		$parsed_site = parse_url( $site );
 
-		if ( $this->get_plugin_setting('mandrillEmail') && $status ) :
+		// to Send or Not to Send...
+		if ( $this->get_plugin_setting('mandrillEmail') && $trigger_email ) :
 			// MANDRILL
 			$mandrill_email = $this->get_plugin_setting('mandrillEmail');
 			try {
@@ -386,6 +392,8 @@ class GFEdcAddOn extends GFAddOn {
 					// A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
 					throw $e;
 			}
+		elseif :
+			gform_update_meta( $entry['id'], 'edc_mandrill_status', 'Not triggered' );
 		endif;
 	}
 
