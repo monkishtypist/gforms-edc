@@ -392,7 +392,7 @@ class GFEdcAddOn extends GFAddOn {
 					// A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
 					throw $e;
 			}
-		elseif :
+		else:
 			gform_update_meta( $entry['id'], 'edc_mandrill_status', 'Not triggered' );
 		endif;
 	}
