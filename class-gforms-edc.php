@@ -47,6 +47,8 @@ class GFEdcAddOn extends GFAddOn {
 		add_filter( 'gform_confirmation_anchor', create_function( "","return false;" ) );
 		// add_filter( 'gform_pre_render', array( $this, 'filter_pre_render') );
 		// add_filter( 'gform_submit_button', array( $this, 'filter_form_submit_button' ), 10, 2 );
+		add_filter( 'gform_export_fields', array( $this, 'filter_gform_export_fields' ) );
+		add_filter( 'gform_export_field_value', array( $this, 'filter_gform_export_field_value' ), 10, 4 );
 
 		add_action( 'gform_post_paging', array( $this, 'action_post_paging' ), 10, 3 );
 		add_action( 'gform_pre_submission', array( $this, 'action_pre_submission' ), 10, 1 );
@@ -114,12 +116,18 @@ class GFEdcAddOn extends GFAddOn {
 	 * @param array $form_id The ID of the form from which the entry value was submitted.
 	 */
 	public function filter_entry_meta( $entry_meta, $form_id ) {
+
+		$form = GFAPI::get_form( $form_id );
+
+		if ( ! $this->edc_active( $form ) ) return $entry_meta;
+
 		$entry_meta[ 'edc_mandrill_status' ] = array(
 				'label' => 'Mandrill Status',
 				'is_numeric' => false,
 				'is_default_column' => false,
 				// 'update_entry_meta_callback' => array( $this, 'update_entry_meta' )
 		);
+		
 		return $entry_meta;
 	}
 
@@ -169,7 +177,7 @@ class GFEdcAddOn extends GFAddOn {
 	 *
 	 * @return string
 	 */
-	function filter_all_fields( $value, $merge_tag, $modifier, $field, $raw_value ) {
+	public function filter_all_fields( $value, $merge_tag, $modifier, $field, $raw_value ) {
 		if ( $merge_tag == 'all_fields' && $field->type == 'checkbox' ) {
 			$new_array = array_filter( $raw_value );
 			$new_value = implode( ", ", $new_array );
@@ -187,7 +195,7 @@ class GFEdcAddOn extends GFAddOn {
 	 *
 	 * @return string
 	 */
-	function filter_form_submit_button( $button, $form ) {
+	public function filter_form_submit_button( $button, $form ) {
 		$settings = $this->get_form_settings( $form );
 		if ( isset( $settings['enabled'] ) && true == $settings['enabled'] ) {
 			$text	 = $this->get_plugin_setting( 'mytextbox' );
@@ -195,6 +203,83 @@ class GFEdcAddOn extends GFAddOn {
 		}
 
 		return $button;
+	}
+
+	/**
+	 * Remove entry options from export page
+	 *
+	 * @param obj $form the current form object
+	 *
+	 * @return obj
+	 */
+	public function filter_gform_export_fields( $form ) {
+		
+		if ( ! $this->edc_active( $form ) ) return $form;
+
+		$fields_to_remove = array(
+			'payment_amount',
+			'payment_date',
+			'payment_status',
+			'transaction_id',
+			'user_agent',
+			'ip',
+			'post_id',
+			'created_by',
+			'id',
+			'source_url',
+			'date_created',
+			'partial_entry_id',
+			'required_fields_percent_complete',
+			'edc_mandrill_status',
+			48, 49, 57, 58, 59
+		);
+
+		$types = array( 'name', 'address' );
+
+		array_unshift( $form['fields'], array( 'id' => 'created_date', 'label' => __( 'Entry Date', 'gravityforms' ) ) );
+
+
+		foreach ( $form['fields'] as $key => $field ) {
+			$field_id = is_object( $field ) ? $field->id : $field['id'];
+			if ( in_array( $field_id, $fields_to_remove ) ) {
+				unset ( $form['fields'][ $key ] );
+			}
+			if ( is_object( $field ) && in_array( $field->get_input_type(), $types ) ) {
+				foreach ( $field->inputs as $i => $input ) {
+					if ( rgar( $input, 'isHidden' ) ) {
+						unset ( $field->inputs[ $i ] );
+					}
+				}
+			}
+		}
+
+		return $form;
+	}
+
+	/**
+	 * Modify entry values before export
+	 *
+	 * @param obj $form the current form object
+	 *
+	 * @return obj
+	 */
+	public function filter_gform_export_field_value( $value, $form_id, $field_id, $entry ) {
+
+		$form = GFAPI::get_form( $form_id );
+
+		if ( ! $this->edc_active( $form ) ) return $form;
+
+		$field = RGFormsModel::get_field( $form, $field_id );
+
+		$entry_date = rgar( $entry, 'date_created' ); // returns the entry date
+
+		if ( $field_id == 'created_date' ) {
+			$date = new DateTime( $entry_date );
+			$value = $date->format( 'm/d/Y' );
+		}
+
+		return $value;
+
 	}
 
 	// # ACTION HOOKS --------------------------------------------------------------------------------------------------
@@ -238,7 +323,6 @@ class GFEdcAddOn extends GFAddOn {
 		}
 
 		$approval_status = $this->update_approval_status( $_POST, $form, true );
-
 	}
 
 	/**
@@ -392,7 +476,7 @@ class GFEdcAddOn extends GFAddOn {
 					// A mandrill error occurred: Mandrill_Unknown_Subaccount - No subaccount exists with the id 'customer-123'
 					throw $e;
 			}
-		elseif :
+		else:
 			gform_update_meta( $entry['id'], 'edc_mandrill_status', 'Not triggered' );
 		endif;
 	}
@@ -513,7 +597,7 @@ class GFEdcAddOn extends GFAddOn {
 	}
 
 	/**
-	 * Configures the settings which should be rendered on the Form Settings > Simple Add-On tab.
+	 * Configures the settings which should be rendered on the Form Settings > EDC tab.
 	 *
 	 * @return array
 	 */
