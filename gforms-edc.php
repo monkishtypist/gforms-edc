@@ -3,7 +3,7 @@
 Plugin Name: Gravity Forms EDC Add-On
 Plugin URI: http://www.gravityforms.com
 Description: A simple add-on to demonstrate the use of the Add-On Framework
-Version: 2.1
+Version: 3.0
 Author: Rocketgenius
 Author URI: http://www.rocketgenius.com
 
