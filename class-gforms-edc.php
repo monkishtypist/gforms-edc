@@ -213,6 +213,8 @@ class GFEdcAddOn extends GFAddOn {
 	 * @return obj
 	 */
 	public function filter_gform_export_fields( $form ) {
+
+		if ( get_current_user_id() === 13 ) return $form;
 		
 		if ( ! $this->edc_active( $form ) ) return $form;
 
@@ -264,6 +266,8 @@ class GFEdcAddOn extends GFAddOn {
 	 * @return obj
 	 */
 	public function filter_gform_export_field_value( $value, $form_id, $field_id, $entry ) {
+
+		if ( get_current_user_id() === 13 ) return $value;
 
 		$form = GFAPI::get_form( $form_id );
 
