@@ -225,7 +225,7 @@ class GFEdcAddOn extends GFAddOn {
 			'ip',
 			'post_id',
 			'created_by',
-			'id',
+			// 'id',
 			'source_url',
 			'date_created',
 			'partial_entry_id',
