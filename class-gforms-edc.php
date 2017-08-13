@@ -415,15 +415,15 @@ class GFEdcAddOn extends GFAddOn {
 				$template_content = array(
 					array(
 						'name' => 'pre_header',
-						'content' => 'Thank you for applying with Egg Donor Central'
+						'content' => 'Thank you for applying with EggDonorCentral'
 					)
 				);
 				$message = array(
 						// 'html' => '',
 						// 'text' => '',
-						'subject' => 'Thank you for applying with Egg Donor Central',
+						'subject' => 'Thank you for applying with EggDonorCentral',
 						'from_email' => $mandrill_email,
-						'from_name' => 'Fairfax Egg Bank',
+						'from_name' => 'EggDonorCentral',
 						'to' => array(
 								array(
 									'email' => $email,
@@ -557,8 +557,8 @@ class GFEdcAddOn extends GFAddOn {
 					),
 					array(
 						'name'							=> 'mandrillPassword',
-						'label'						 => esc_html__( 'Mandrill SMTP Username', 'gforms-edc' ),
-						'tooltip'					 => esc_html__( 'Enter your Mandrill SMTP Username', 'gforms-edc' ),
+						'label'						 => esc_html__( 'Mandrill SMTP Password', 'gforms-edc' ),
+						'tooltip'					 => esc_html__( 'Enter your Mandrill SMTP Password', 'gforms-edc' ),
 						'type'							=> 'text',
 						'class'						 => 'small',
 						'feedback_callback' => array( $this, 'is_valid_setting' ),
