@@ -271,7 +271,7 @@ class GFEdcAddOn extends GFAddOn {
 
 		$form = GFAPI::get_form( $form_id );
 
-		if ( ! $this->edc_active( $form ) ) return $form;
+		if ( ! $this->edc_active( $form ) ) return $value;
 
 		$field = RGFormsModel::get_field( $form, $field_id );
 
