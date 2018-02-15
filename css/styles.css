@@ -1,5 +1,3 @@
-/* placeholder for css */
-
 /* General */
 .gform_wrapper .gform_heading,
 .gform_wrapper .partial_entry_warning {
@@ -70,4 +68,12 @@ body .gform_wrapper form div.gform_body ul.gform_fields li.gfield.gfield_html ul
   background-color: #fff;
   border-color: #3C3C3C;
   color: #3C3C3C;
+}
+
+
+
+.ginput_complex {
+  display: flex;
+  flex: 0 auto;
+  flex-flow: wrap;
 }
